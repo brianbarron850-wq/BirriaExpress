@@ -1,1640 +1,1116 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestor de Agenda Dinámica</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .slot-card { transition: all 0.2s ease; }
-    .slot-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-    .section-divider { @apply col-span-1 md:col-span-2 border-b border-slate-200 text-xs font-bold text-indigo-600 uppercase tracking-wider pt-2 pb-1 mt-2; }
-    .drag-over { @apply bg-indigo-50 border-indigo-400 text-indigo-700 scale-105; }
-    .campo-bloqueado { @apply bg-slate-100 text-slate-500 cursor-not-allowed opacity-80; }
-  </style>
-  <script>
-    // ==========================================
-    // BLOQUEO DE INSPECCIÓN Y CLIC DERECHO
-    // ==========================================
-    document.addEventListener('contextmenu', function(e) {
-      e.preventDefault();
-    });
-    document.addEventListener('keydown', function(e) {
-      // Bloquear F12
-      if (e.key === 'F12' || e.keyCode === 123) {
-        e.preventDefault();
-        return false;
-      }
-      // Bloquear combinaciones Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
-      if (e.ctrlKey) {
-        if (e.shiftKey && (e.key.toLowerCase() === 'i' || e.key.toLowerCase() === 'j')) {
-          e.preventDefault();
-          return false;
-        }
-        if (e.key.toLowerCase() === 'u') {
-          e.preventDefault();
-          return false;
-        }
-      }
-    });
-  </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Birria Express · Control de Restaurante</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6EEDD;
+  --bg-alt:#EFE1C3;
+  --paper:#FFFCF5;
+  --ink:#2B1B12;
+  --ink-soft:#5B4636;
+  --brick:#A23A1B;
+  --brick-dark:#7A2911;
+  --ember:#D9832E;
+  --corn:#E3B23C;
+  --cilantro:#4C7A3B;
+  --cilantro-dark:#375B2B;
+  --danger:#B3261E;
+  --masa:#E8D2A0;
+  --line:#DCC79E;
+  --shadow: 0 6px 18px rgba(90,45,15,.12);
+  --radius: 14px;
+  font-family: 'Figtree', system-ui, sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  background:
+    radial-gradient(circle at 100% 0%, rgba(217,131,46,.10), transparent 40%),
+    var(--bg);
+  color:var(--ink);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:'Fraunces', serif; font-weight:600; margin:0 0 4px;}
+.mono{font-family:'IBM Plex Mono', monospace;}
+button{font-family:inherit; cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+a{color:inherit;}
+::selection{background:var(--corn); color:var(--ink);}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  padding:10px 16px; border-radius:10px; border:1.5px solid transparent;
+  font-weight:600; font-size:14px; transition:.15s transform, .15s box-shadow, .15s background;
+  background:var(--paper); color:var(--ink); border-color:var(--line);
+}
+.btn:hover{transform:translateY(-1px); box-shadow:var(--shadow);}
+.btn:active{transform:translateY(0);}
+.btn-primary{background:var(--brick); border-color:var(--brick); color:#fff;}
+.btn-primary:hover{background:var(--brick-dark);}
+.btn-success{background:var(--cilantro); border-color:var(--cilantro); color:#fff;}
+.btn-success:hover{background:var(--cilantro-dark);}
+.btn-warn{background:var(--corn); border-color:var(--corn); color:#3a2a06;}
+.btn-danger{background:transparent; border-color:var(--danger); color:var(--danger);}
+.btn-danger:hover{background:var(--danger); color:#fff;}
+.btn-ghost{background:transparent; border-color:transparent; color:var(--ink-soft);}
+.btn-sm{padding:6px 10px; font-size:12.5px; border-radius:8px;}
+.btn-block{width:100%;}
+.btn:disabled{opacity:.4; cursor:not-allowed; transform:none;}
+
+/* ---------- Layout ---------- */
+#loginScreen{
+  min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.login-card{
+  width:100%; max-width:380px; background:var(--paper); border:1.5px solid var(--line);
+  border-radius:20px; padding:36px 30px; box-shadow:var(--shadow); text-align:center;
+}
+.login-card .logo{
+  width:64px; height:64px; border-radius:16px; background:var(--brick); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:30px; margin:0 auto 14px;
+  box-shadow: inset 0 -6px 0 rgba(0,0,0,.15);
+}
+.login-card h1{font-size:26px;}
+.login-card p.tag{color:var(--ink-soft); margin-bottom:22px; font-size:13.5px;}
+.field{text-align:left; margin-bottom:14px;}
+.field label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:5px; text-transform:uppercase; letter-spacing:.04em;}
+.field input, .field select, .field textarea{
+  width:100%; padding:11px 12px; border-radius:10px; border:1.5px solid var(--line);
+  background:#fff; font-size:15px; color:var(--ink);
+}
+.field input:focus, .field select:focus, .field textarea:focus{outline:2px solid var(--ember); outline-offset:1px;}
+.login-error{color:var(--danger); font-size:13px; margin-bottom:10px; min-height:16px; font-weight:600;}
+.login-hint{margin-top:16px; font-size:12px; color:var(--ink-soft); background:var(--bg-alt); padding:10px; border-radius:10px;}
+
+.app-shell{display:flex; min-height:100vh;}
+.sidebar{
+  width:220px; flex-shrink:0; background:var(--brick); color:#fdece0; padding:20px 14px;
+  display:flex; flex-direction:column; gap:4px; position:sticky; top:0; height:100vh;
+}
+.sidebar .brand{display:flex; align-items:center; gap:10px; padding:6px 8px 20px;}
+.sidebar .brand .logo{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:18px;}
+.sidebar .brand strong{font-family:'Fraunces',serif; font-size:16px; display:block;}
+.sidebar .brand span{font-size:11px; opacity:.75;}
+.navbtn{
+  display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:10px;
+  background:transparent; color:#fdece0e0; border:none; text-align:left; font-size:14.5px; font-weight:600;
+}
+.navbtn .ic{font-size:17px; width:20px; text-align:center;}
+.navbtn:hover{background:rgba(255,255,255,.10);}
+.navbtn.active{background:#fff; color:var(--brick-dark);}
+.sidebar-foot{margin-top:auto; display:flex; flex-direction:column; gap:6px; padding-top:10px; border-top:1px solid rgba(255,255,255,.15);}
+.userchip{padding:6px 8px; font-size:12.5px; opacity:.9; line-height:1.4;}
+.userchip b{display:block; font-size:13.5px;}
+
+.main{flex:1; min-width:0; padding:22px 26px 90px; max-width:1180px;}
+.topbar{display:none;}
+.view-head{display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:18px;}
+.view-head p{color:var(--ink-soft); font-size:13.5px; margin:2px 0 0;}
+
+.card{background:var(--paper); border:1.5px solid var(--line); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow);}
+.section-title{font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); font-weight:700; margin-bottom:10px;}
+
+/* ---------- Badges ---------- */
+.badge{display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:99px; text-transform:uppercase; letter-spacing:.02em; white-space:nowrap;}
+.badge::before{content:''; width:6px; height:6px; border-radius:50%; background:currentColor;}
+.badge-espera{background:#fbe4d8; color:#9a3d16;}
+.badge-proceso{background:#fbeecb; color:#8a6408;}
+.badge-listo{background:#e2f0da; color:#3a6b2b;}
+.badge-barra{background:#dcebf5; color:#1f5a80;}
+.badge-pagado{background:#e2f0da; color:#3a6b2b;}
+.badge-pendiente{background:#fbe0de; color:#a4241b;}
+.badge-admin{background:#f0dcf7;color:#7a2b91;}
+.badge-mesero{background:#dcebf5;color:#1f5a80;}
+.badge-cocinero{background:#fbeecb;color:#8a6408;}
+.badge-cajero{background:#e2f0da;color:#3a6b2b;}
+
+/* ---------- Pedidos view ---------- */
+.order-grid{display:grid; grid-template-columns: 1.3fr 1fr; gap:18px; align-items:start;}
+.prod-cats{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
+.chip{padding:7px 14px; border-radius:99px; border:1.5px solid var(--line); background:#fff; font-size:13px; font-weight:600; color:var(--ink-soft);}
+.chip.active{background:var(--ink); border-color:var(--ink); color:#fff;}
+.prod-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:10px;}
+.prod-tile{border:1.5px solid var(--line); background:#fff; border-radius:12px; padding:12px; text-align:left; transition:.12s;}
+.prod-tile:hover{border-color:var(--brick); transform:translateY(-2px); box-shadow:var(--shadow);}
+.prod-tile .pname{font-weight:700; font-size:14px; display:block;}
+.prod-tile .pcat{font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em;}
+.prod-tile .pprice{font-family:'IBM Plex Mono',monospace; color:var(--brick); font-weight:600; margin-top:6px; display:block;}
+.cart-item{display:flex; align-items:flex-start; gap:8px; padding:10px 0; border-bottom:1px dashed var(--line);}
+.cart-item:last-child{border-bottom:none;}
+.cart-item .ci-main{flex:1; min-width:0;}
+.cart-item .ci-name{font-weight:700; font-size:14px;}
+.cart-item .ci-note{font-size:12px; color:var(--ink-soft); border:none; background:var(--bg-alt); border-radius:6px; padding:4px 6px; width:100%; margin-top:5px;}
+.qty-ctrl{display:flex; align-items:center; gap:6px;}
+.qty-ctrl button{width:24px; height:24px; border-radius:6px; border:1.5px solid var(--line); background:#fff; font-weight:700; line-height:1;}
+.qty-ctrl span{min-width:18px; text-align:center; font-weight:700; font-family:'IBM Plex Mono',monospace;}
+.ci-price{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:13.5px; white-space:nowrap;}
+.total-row{display:flex; justify-content:space-between; align-items:center; padding-top:12px; margin-top:8px; border-top:2px solid var(--ink); font-family:'Fraunces',serif;}
+.total-row span:last-child{font-size:22px; font-weight:700; color:var(--brick);}
+.empty-cart{padding:30px 10px; text-align:center; color:var(--ink-soft); font-size:13.5px;}
+
+/* ---------- Kitchen tickets ---------- */
+.ticket-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:16px;}
+.ticket-card{background:var(--paper); border:1.5px solid var(--line); border-radius:12px; position:relative; overflow:hidden; box-shadow:var(--shadow);}
+.ticket-card::before{content:''; position:absolute; top:0; left:0; right:0; height:8px;
+  background-image: radial-gradient(circle, var(--bg) 4px, transparent 4.5px);
+  background-size: 16px 16px; background-position:0 -4px;}
+.ticket-head{padding:16px 16px 10px; border-bottom:1px dashed var(--line);}
+.ticket-head .folio{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:15px; color:var(--brick);}
+.ticket-head .meta{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+.ticket-body{padding:12px 16px;}
+.ticket-body ul{margin:0; padding:0; list-style:none;}
+.ticket-body li{display:flex; justify-content:space-between; font-size:13.5px; padding:4px 0; gap:8px;}
+.ticket-body li b{font-family:'IBM Plex Mono',monospace;}
+.ticket-note{margin-top:8px; background:var(--bg-alt); border-radius:8px; padding:8px 10px; font-size:12.5px; color:var(--ink-soft);}
+.status-rail{display:flex; align-items:center; gap:0; padding:14px 16px 4px;}
+.status-rail .dot{width:11px; height:11px; border-radius:50%; background:var(--line); flex-shrink:0;}
+.status-rail .seg{flex:1; height:3px; background:var(--line);}
+.status-rail .dot.done, .status-rail .seg.done{background:var(--cilantro);}
+.ticket-foot{display:flex; gap:8px; padding:10px 16px 16px;}
+
+/* ---------- Caja ---------- */
+.caja-grid{display:grid; grid-template-columns: 1fr 380px; gap:18px; align-items:start;}
+.caja-row{display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border:1.5px solid var(--line); border-radius:12px; background:#fff; margin-bottom:10px; gap:10px; flex-wrap:wrap;}
+.caja-row .cinfo{min-width:0;}
+.caja-row .cinfo .cname{font-weight:700;}
+.caja-row .cinfo .csub{font-size:12px; color:var(--ink-soft);}
+.caja-row .camount{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:16px; color:var(--brick);}
+.pay-methods{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:12px 0;}
+.pay-method{border:1.5px solid var(--line); border-radius:10px; padding:10px 6px; text-align:center; background:#fff; font-size:12.5px; font-weight:700;}
+.pay-method.active{border-color:var(--brick); background:#fdece0;}
+.split-row{display:flex; gap:8px; align-items:center; margin-bottom:8px;}
+.split-row input{flex:1;}
+
+/* ---------- Tables ---------- */
+table{width:100%; border-collapse:collapse; font-size:13.5px;}
+table th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); padding:8px 10px; border-bottom:2px solid var(--ink);}
+table td{padding:10px 10px; border-bottom:1px solid var(--line); vertical-align:middle;}
+table tr:last-child td{border-bottom:none;}
+.table-wrap{overflow-x:auto;}
+
+/* ---------- Corte ---------- */
+.stat-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:18px;}
+.stat-card{background:var(--paper); border:1.5px solid var(--line); border-radius:14px; padding:16px; box-shadow:var(--shadow);}
+.stat-card .slabel{font-size:11.5px; text-transform:uppercase; color:var(--ink-soft); font-weight:700; letter-spacing:.04em;}
+.stat-card .sval{font-family:'IBM Plex Mono',monospace; font-size:24px; font-weight:600; color:var(--brick); margin-top:4px;}
+
+/* ---------- Modal ---------- */
+.modal-overlay{position:fixed; inset:0; background:rgba(30,17,8,.45); display:flex; align-items:center; justify-content:center; z-index:100; padding:16px;}
+.modal{background:var(--paper); border-radius:18px; padding:24px; width:100%; max-width:460px; max-height:90vh; overflow:auto; box-shadow:0 20px 50px rgba(0,0,0,.3);}
+.modal-wide{max-width:640px;}
+.modal-close{float:right; background:none; border:none; font-size:20px; color:var(--ink-soft); line-height:1;}
+.modal h2{margin-bottom:14px;}
+
+/* ---------- Misc ---------- */
+.tag-role{font-size:10px; text-transform:uppercase; font-weight:700; letter-spacing:.05em; padding:2px 7px; border-radius:99px;}
+.flex-between{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;}
+.muted{color:var(--ink-soft);}
+.empty-state{text-align:center; padding:50px 20px; color:var(--ink-soft);}
+.empty-state .ic{font-size:38px; display:block; margin-bottom:10px;}
+.toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:12px 20px; border-radius:99px; font-size:13.5px; font-weight:600; box-shadow:var(--shadow); z-index:200; opacity:0; transition:.25s;}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
+.hist-list{max-height:340px; overflow:auto;}
+.hist-item{padding:9px 0; border-bottom:1px solid var(--line); font-size:13px;}
+.hist-item .ht{font-size:11px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+.loading-overlay{position:fixed; inset:0; background:rgba(246,238,221,.85); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:999; font-family:'Fraunces',serif; font-size:20px; color:var(--brick); gap:12px;}
+
+/* ---------- Responsive ---------- */
+@media (max-width:960px){
+  .order-grid, .caja-grid{grid-template-columns:1fr;}
+}
+@media (max-width:768px){
+  .sidebar{display:none;}
+  .app-shell{flex-direction:column;}
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:var(--brick); color:#fff; padding:14px 16px; position:sticky; top:0; z-index:20;
+  }
+  .topbar .brand{display:flex; align-items:center; gap:8px; font-family:'Fraunces',serif; font-weight:600; font-size:16px;}
+  .main{padding:16px 14px 90px;}
+  .bottomnav{
+    position:fixed; bottom:0; left:0; right:0; background:var(--paper); border-top:1.5px solid var(--line);
+    display:flex; z-index:20; padding:6px 4px calc(env(safe-area-inset-bottom,0px) + 4px);
+    box-shadow:0 -4px 14px rgba(0,0,0,.08);
+  }
+  .bottomnav button{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; background:none; border:none; padding:8px 2px; font-size:10.5px; font-weight:700; color:var(--ink-soft);}
+  .bottomnav button.active{color:var(--brick);}
+  .bottomnav button .ic{font-size:19px;}
+  .pay-methods{grid-template-columns:1fr 1fr;}
+}
+@media print{
+  body *{visibility:hidden;}
+}
+</style>
 </head>
-<body class="bg-slate-50 font-sans text-slate-800 min-h-screen">
+<body>
+<div id="root"></div>
+<div id="toast" class="toast"></div>
 
-  <div id="modalLogin" class="fixed inset-0 bg-slate-900 flex items-center justify-center p-4 z-[100]">
-    <div class="bg-white p-8 rounded-xl shadow-xl max-w-sm w-full text-center">
-      <h2 class="text-2xl font-black mb-2 text-slate-800">Acceso al Sistema</h2>
-      <p class="text-sm text-slate-500 mb-6">Ingresa tu PIN de seguridad para continuar.</p>
-      <input type="password" id="inputPin" onkeyup="if(event.key === 'Enter') verificarPin()" placeholder="••••" class="w-full border border-slate-300 rounded-lg p-3 text-center text-3xl tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-6 font-mono">
-      <button id="btnLogin" onclick="verificarPin()" type="button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
-        Ingresar
-      </button>
-      <p id="msgErrorPin" class="text-rose-600 text-xs font-bold mt-4 hidden"></p>
-    </div>
-  </div>
+<script>
+/* =========================================================================
+   BIRRIA EXPRESS · Sistema de gestión de restaurante
+   Base de datos: Google Sheets vía Apps Script Web App (Alojado en GitHub)
+   ========================================================================= */
 
-  <div id="appContenedor" class="hidden">
-    <header class="bg-indigo-700 text-white shadow-md px-6 py-4 flex flex-wrap justify-between items-center gap-4">
-      <div>
-        <h1 class="text-2xl font-bold tracking-tight">Agenda Instaladores</h1>
-        <p class="text-xs text-indigo-200 mt-0.5 flex items-center gap-2">
-          Agenda de Cuadrillas 
-          <span id="badgeRol" class="bg-white/20 text-white text-[10px] tracking-wider px-2 py-0.5 rounded font-bold uppercase border border-white/30"></span>
-        </p>
-      </div>
-      
-      <div class="flex items-center gap-3">
-        <button id="btnSincronizar" onclick="sincronizarDatos()" class="bg-black/30 hover:bg-black/40 text-white font-medium text-sm py-2 px-3 rounded-lg transition-colors border border-white/10 flex items-center gap-2">
-          🔄 Sincronizar
-        </button>
-        <button onclick="cerrarSesion()" class="bg-rose-600 hover:bg-rose-700 text-white font-medium text-sm py-2 px-3 rounded-lg transition-colors shadow-sm border border-rose-800">
-          Salir
-        </button>
-      </div>
-    </header>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyiiuaeOiXTxz_Os_MGAypE9rST24XLg-Vvc2os_mbE0vok9jlXxVU1gZj2nR1vCMCL/exec"; // <-- PEGA TU URL DE APPS SCRIPT AQUÍ
+const SESSION_KEY = 'birriaSession_v1';
+let dbCache = null;
 
-    <main class="max-w-7xl mx-auto p-4 lg:p-6">
-      <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-4 mb-6 flex flex-wrap gap-4 items-center justify-between">
-        <div class="flex items-center gap-4 flex-wrap w-full md:w-auto">
-          <div class="flex items-center gap-2">
-            <label for="filtroFecha" class="font-semibold text-sm text-slate-700">Filtrar Fecha:</label>
-            <input type="date" id="filtroFecha" onchange="cambioDeFechaFiltro()" class="border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800">
-          </div>
-          
-          <div id="panelAdmin" class="flex items-center gap-2 pl-4 border-l border-slate-200 hidden">
-            <input type="text" id="inputNuevaCuadrilla" placeholder="Nombre nueva cuadrilla..." class="border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50">
-            <button onclick="agregarCuadrillaFecha()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-2 px-3 rounded-lg transition-colors shadow-sm">
-              ➕ Añadir
-            </button>
-            <button onclick="abrirVistaGeneralAdmin()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm py-2 px-3 rounded-lg transition-colors shadow-sm ml-2 flex items-center gap-1">
-              📊 Vista General
-            </button>
-          </div>
+function todayKey(d=new Date()){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function isoWeekKey(d=new Date()){
+  const dt = new Date(d); const day = (dt.getDay()+6)%7;
+  dt.setDate(dt.getDate()-day);
+  return todayKey(dt);
+}
+function monthKey(d=new Date()){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function money(n){ return '$'+(Number(n)||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtDateTime(iso){ const d=new Date(iso); return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+function seedDB(){
+  return {
+    counters:{order:1, user:2, product:1},
+    users:[{id:1, username:'Brian', password:'1234', name:'Brian', role:'admin'}],
+    products:[
+      {id:1, name:'Taco de birria', price:22, category:'Birria'},
+      {id:2, name:'Orden de birria (3 tacos)', price:60, category:'Birria'},
+      {id:3, name:'Quesabirria', price:28, category:'Birria'},
+      {id:4, name:'Consomé chico', price:25, category:'Birria'},
+      {id:5, name:'Consomé grande', price:45, category:'Birria'},
+      {id:6, name:'Torta de birria', price:65, category:'Birria'},
+      {id:7, name:'Gringa de birria', price:38, category:'Birria'},
+      {id:8, name:'Refresco', price:20, category:'Bebidas'},
+      {id:9, name:'Agua fresca', price:18, category:'Bebidas'},
+      {id:10, name:'Cerveza', price:35, category:'Bebidas'},
+      {id:11, name:'Extra tortillas', price:10, category:'Extras'},
+      {id:12, name:'Extra cebolla/cilantro', price:5, category:'Extras'}
+    ],
+    orders:[], history:[], closures:[],
+    cash:{date:null, initial:null, openedBy:null}
+  };
+}
+
+async function loadDB(){
+  if(dbCache) return dbCache;
+  try{
+    const res = await fetch(SCRIPT_URL + "?action=getDB");
+    dbCache = await res.json();
+    return dbCache;
+  }catch(e){
+    console.error(e);
+    toast("Error conectando a Google Sheets");
+    return seedDB();
+  }
+}
+
+async function saveDB(db){
+  dbCache = db;
+  try{
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveDB', db })
+    });
+  }catch(e){
+    console.error(e);
+    toast("Error guardando en Google Sheets");
+  }
+}
+
+function nextId(db, key){ const n = db.counters[key]||1; db.counters[key]=n+1; return n; }
+
+function getSession(){ try{ return JSON.parse(sessionStorage.getItem(SESSION_KEY)); }catch(e){ return null; } }
+function setSession(u){ sessionStorage.setItem(SESSION_KEY, JSON.stringify(u)); }
+function clearSession(){ sessionStorage.removeItem(SESSION_KEY); }
+
+async function logHistory(action, detail){
+  const db = await loadDB();
+  const s = getSession();
+  db.history.unshift({id:uid(), ts:new Date().toISOString(), user:s?s.name:'—', role:s?s.role:'—', action, detail});
+  if(db.history.length>500) db.history.length = 500;
+  await saveDB(db);
+}
+
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(window.__toastTO); window.__toastTO=setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------- Roles ---------- */
+const ROLE_LABEL = {admin:'Administrador', mesero:'Mesero', cocinero:'Cocinero', cajero:'Cajero'};
+const ROLE_VIEWS = {
+  admin:['pedidos','cocina','caja','productos','corte','usuarios'],
+  mesero:['pedidos'],
+  cocinero:['cocina'],
+  cajero:['caja']
+};
+const VIEW_META = {
+  pedidos:{label:'Pedidos', icon:'🧾'},
+  cocina:{label:'Cocina', icon:'🍳'},
+  caja:{label:'Caja', icon:'💵'},
+  productos:{label:'Productos', icon:'📦'},
+  corte:{label:'Corte', icon:'📊'},
+  usuarios:{label:'Usuarios', icon:'👤'}
+};
+
+let state = {
+  view: null,
+  cart: [],
+  customer:'',
+  generalNotes:'',
+  prodFilter:'Todos',
+  cocinaFilter:'activos',
+  cajaFilter:'pendientes',
+  payDraft:null
+};
+
+/* =========================================================================
+   RENDER: LOGIN
+   ========================================================================= */
+function renderLogin(){
+  document.getElementById('root').innerHTML = `
+  <div id="loginScreen">
+    <div class="login-card">
+      <div class="logo">🌶️</div>
+      <h1>Birria Express</h1>
+      <p class="tag">Control en la nube (Google Sheets)</p>
+      <form id="loginForm">
+        <div class="field">
+          <label>Usuario</label>
+          <input type="text" id="loginUser" autocomplete="username" required>
         </div>
-      </div>
-
-      <div id="contenedorDias" class="space-y-8"></div>
-    </main>
-  </div>
-
-  <div id="modalRegistro" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-      <div class="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center sticky top-0 z-10">
-        <div>
-          <span class="text-[10px] uppercase font-black tracking-wider text-indigo-600">Formulario de Registro</span>
-          <h3 id="modalTitulo" class="font-black text-lg text-slate-800">Registrar en Agenda</h3>
+        <div class="field">
+          <label>Contraseña</label>
+          <input type="password" id="loginPass" autocomplete="current-password" required>
         </div>
-        <button type="button" onclick="cerrarModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold p-1 leading-none">×</button>
-      </div>
-      
-      <form id="formularioAgenda" onsubmit="enviarDatos(event)" class="p-6 space-y-4">
-        <input type="hidden" id="form_fecha">
-        <input type="hidden" id="form_cuadrilla">
-        <input type="hidden" id="form_espacio">
-        <input type="hidden" id="form_rownum">
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="section-divider">Datos Operativos</div>
-
-          <div>
-            <label class="flex justify-between items-center block text-xs font-bold text-slate-600 mb-1">
-              <span>Técnico Asignado / Cuadrilla</span>
-              <button type="button" onclick="gestionarLista('config_lista_tecnicos', 'Técnico Asignado')" class="admin-only text-indigo-500 hover:text-indigo-800 text-[10px] px-1 bg-indigo-50 rounded hidden">⚙️ Editar</button>
-            </label>
-            <select id="form_tecnico" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
-          </div>
-          
-          <div>
-            <label class="flex justify-between items-center block text-xs font-bold text-slate-600 mb-1">
-              <span>Motivo</span>
-              <button type="button" onclick="gestionarLista('config_lista_motivos', 'Motivo')" class="admin-only text-indigo-500 hover:text-indigo-800 text-[10px] px-1 bg-indigo-50 rounded hidden">⚙️ Editar</button>
-            </label>
-            <select id="form_motivo" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required></select>
-          </div>
-
-          <div>
-             <label class="flex justify-between items-center block text-xs font-bold text-slate-600 mb-1">
-              <span>Horario</span>
-              <button type="button" onclick="gestionarLista('config_lista_horarios', 'Horarios')" class="admin-only text-indigo-500 hover:text-indigo-800 text-[10px] px-1 bg-indigo-50 rounded hidden">⚙️ Editar</button>
-             </label>
-            <select id="form_horario" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required></select>
-          </div>
-
-          <div>
-             <label class="flex justify-between items-center block text-xs font-bold text-slate-600 mb-1">
-              <span>Agente que Agendó</span>
-              <button type="button" onclick="gestionarLista('config_lista_agentes', 'Agentes')" class="admin-only text-indigo-500 hover:text-indigo-800 text-[10px] px-1 bg-indigo-50 rounded hidden">⚙️ Editar</button>
-            </label>
-            <select id="form_agente" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required></select>
-          </div>
-
-          <div class="section-divider">Información del Cliente</div>
-
-          <div class="md:col-span-2">
-            <label class="block text-xs font-bold text-slate-600 mb-1">Nombre del Cliente</label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div class="flex gap-2 items-center">
-                <input type="text" id="form_id_wisphub" placeholder="ID (Opc.)" class="w-24 border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <input type="text" id="form_nombredelcliente" placeholder="Nombre completo del cliente" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-                <button type="button" onclick="buscarEnWisphub(event)" title="Buscar en WispHub" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg border border-indigo-600 transition-colors flex items-center justify-center shrink-0 shadow-sm">
-                  🔍
-                </button>
-                <div id="contenedor_estado_wisphub" class="hidden flex items-center justify-center shrink-0">
-                    <span id="badge_estado_wisphub" class="text-[11px] uppercase tracking-wider font-black px-2 py-1 rounded-lg border shadow-sm"></span>
-                </div>
-              </div>
-              <input type="url" id="form_link_cliente" placeholder="Enlace personalizado (URL)" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Teléfono</label>
-            <input type="tel" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')" id="form_telefono" placeholder="Ej: 6141234567" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">IP</label>
-            <input type="text" id="form_ip" placeholder="Ej: 192.168.1.1 (Opcional)" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          </div>
-
-          <div class="md:col-span-2">
-            <label class="block text-xs font-bold text-slate-600 mb-1">Calle y Número</label>
-            <input type="text" id="form_calleynumero" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-          </div>
-
-          <div>
-            <label class="flex justify-between items-center block text-xs font-bold text-slate-600 mb-1">
-              <span>Colonia ó Fraccionamiento</span>
-              <button type="button" onclick="gestionarLista('config_lista_colonias', 'Colonias')" class="admin-only text-indigo-500 hover:text-indigo-800 text-[10px] px-1 bg-indigo-50 rounded hidden">⚙️ Editar</button>
-            </label>
-            <select id="form_coloniaofracc" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required></select>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Coordenadas o entre calles</label>
-            <input type="text" id="form_coordenadasoentrecalles" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          </div>
-
-          <div class="section-divider">Validaciones y Comentarios</div>
-          
-          <div>
-            <label class="flex justify-between items-center block text-xs font-bold text-slate-600 mb-1">
-              <span>Bienvenida</span>
-              <button type="button" onclick="gestionarLista('config_lista_bienvenida', 'Opciones de Bienvenida')" class="admin-only text-indigo-500 hover:text-indigo-800 text-[10px] px-1 bg-indigo-50 rounded hidden">⚙️ Editar</button>
-            </label>
-            <select id="form_bienvenida" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
-          </div>
-
-          <div>
-             <label class="flex justify-between items-center block text-xs font-bold text-slate-600 mb-1">
-              <span>¿Por qué medio nos conoció?</span>
-              <button type="button" onclick="gestionarLista('config_lista_medios', 'Medios de Contacto')" class="admin-only text-indigo-500 hover:text-indigo-800 text-[10px] px-1 bg-indigo-50 rounded hidden">⚙️ Editar</button>
-            </label>
-            <select id="form_pormediosediocuentadenosotros" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
-          </div>
-
-          <div>
-             <label class="block text-xs font-bold text-slate-600 mb-1">Otros ¿Cuál?</label>
-            <input type="text" id="form_otroscual" placeholder="Especificar otro medio" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          </div>
-
-          <div>
-            <label class="flex justify-between items-center block text-xs font-bold text-slate-600 mb-1">
-               <span>Plan Contratado</span>
-               <button type="button" onclick="gestionarLista('config_lista_planes', 'Planes')" class="admin-only text-indigo-500 hover:text-indigo-800 text-[10px] px-1 bg-indigo-50 rounded hidden">⚙️ Editar</button>
-            </label>
-            <select id="form_plan" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
-          </div>
-          
-          <div>
-            <label class="flex justify-between items-center block text-xs font-bold text-slate-600 mb-1">
-              <span>Confirmada</span>
-              <button type="button" onclick="gestionarLista('config_lista_confirmada', 'Opciones de Confirmada')" class="admin-only text-indigo-500 hover:text-indigo-800 text-[10px] px-1 bg-indigo-50 rounded hidden">⚙️ Editar</button>
-            </label>
-            <select id="form_confirmada" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
-          </div>
-
-          <div>
-              <label class="flex justify-between items-center block text-xs font-bold text-slate-600 mb-1">
-              <span>Se realizó</span>
-              <button type="button" onclick="gestionarLista('config_lista_serealizo', 'Opciones de Se realizó')" class="admin-only text-indigo-500 hover:text-indigo-800 text-[10px] px-1 bg-indigo-50 rounded hidden">⚙️ Editar</button>
-             </label>
-            <select id="form_serealizo" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
-          </div>
-
-          <div>
-             <label class="flex justify-between items-center block text-xs font-bold text-slate-600 mb-1">
-              <span>Ya fue cliente</span>
-              <button type="button" onclick="gestionarLista('config_lista_yafuecliente', 'Opciones de Cliente Histórico')" class="admin-only text-indigo-500 hover:text-indigo-800 text-[10px] px-1 bg-indigo-50 rounded hidden">⚙️ Editar</button>
-             </label>
-            <select id="form_yafuecliente" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
-          </div>
-          
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Monto ($)</label>
-            <input type="text" id="form_monto" placeholder="Ej: 1500.50" oninput="this.value = this.value.replace(/[^0-9.]/g, '')" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          </div>
-
-          <div class="md:col-span-2">
-            <label class="block text-xs font-bold text-slate-600 mb-1">Comentarios Generales</label>
-            <textarea id="form_comentarios" rows="2" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
-          </div>
-
-          <div class="md:col-span-2">
-            <label class="block text-xs font-bold text-slate-600 mb-1">Comentarios CAT</label>
-            <textarea id="form_comentarioscat" rows="2" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
-          </div>
-          
-          <div class="md:col-span-2">
-            <label class="block text-xs font-bold text-slate-600 mb-1">Comentarios del Técnico</label>
-            <textarea id="form_comentariosdeltecnico" rows="2" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
-          </div>
-          
-          <div class="hidden">
-              <input type="text" id="form_reportetecnico">
-          </div>
-
-          <div class="md:col-span-2 mt-4 flex gap-3 justify-end border-t border-slate-200 pt-4">
-            <button type="button" id="btnEliminarRegistro" onclick="eliminarRegistroBD()" class="hidden bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
-               🗑️ Eliminar Registro
-            </button>
-            <button type="button" onclick="cerrarModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 px-6 rounded-lg transition-colors">
-              Cancelar
-            </button>
-            <button type="submit" id="btnGuardarRegistro" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-md">
-              Guardar Cambios
-            </button>
-          </div>
-        </div>
+        <div class="login-error" id="loginError"></div>
+        <button class="btn btn-primary btn-block" type="submit">Entrar</button>
       </form>
+      <div class="login-hint">Usuario por defecto: <b>Brian</b> / <b>1234</b></div>
     </div>
-  </div>
+  </div>`;
+  document.getElementById('loginForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const u = document.getElementById('loginUser').value.trim();
+    const p = document.getElementById('loginPass').value;
+    const db = await loadDB();
+    const user = db.users.find(x=>x.username.toLowerCase()===u.toLowerCase() && x.password===p);
+    if(!user){
+      document.getElementById('loginError').textContent = 'Usuario o contraseña incorrectos.';
+      return;
+    }
+    setSession({id:user.id, name:user.name, username:user.username, role:user.role});
+    await logHistory('Inicio de sesión', user.name+' ('+ROLE_LABEL[user.role]+') inició sesión');
+    boot();
+  });
+}
 
-  <div id="modalWisphubSeleccion" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[110]">
-    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[85vh] flex flex-col">
-      <div class="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-        <h3 class="font-black text-lg text-slate-800">Múltiples coincidencias</h3>
-        <button type="button" onclick="cerrarModalWisphub()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold p-1 leading-none">×</button>
-      </div>
-      <div class="p-4 bg-yellow-50 text-yellow-800 text-xs border-b border-yellow-200">
-        Se encontraron varios clientes que coinciden con tu búsqueda. Por favor selecciona el correcto:
-      </div>
-      
-      <div class="px-6 pt-4 pb-2 border-b border-slate-100">
-        <input type="text" id="filtroIpWisphub" placeholder="🔍 Buscar o filtrar por IP..." class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50">
-      </div>
+/* =========================================================================
+   SHELL / NAV
+   ========================================================================= */
+async function renderShell(){
+  const s = getSession();
+  const views = ROLE_VIEWS[s.role]||[];
+  if(!state.view || !views.includes(state.view)) state.view = views[0];
 
-      <div class="p-6 pt-3 overflow-y-auto space-y-3" id="listaClientesWisphub">
+  const navItems = views.map(v=>`
+    <button class="navbtn ${state.view===v?'active':''}" onclick="goView('${v}')">
+      <span class="ic">${VIEW_META[v].icon}</span> ${VIEW_META[v].label}
+    </button>`).join('');
+
+  const bottomItems = views.map(v=>`
+    <button class="${state.view===v?'active':''}" onclick="goView('${v}')">
+      <span class="ic">${VIEW_META[v].icon}</span>${VIEW_META[v].label}
+    </button>`).join('');
+
+  document.getElementById('root').innerHTML = `
+  <div class="app-shell">
+    <div class="sidebar">
+      <div class="brand"><div class="logo">🌶️</div><div><strong>Birria Express</strong><span>Nube Sheets</span></div></div>
+      ${navItems}
+      <div class="sidebar-foot">
+        <button class="navbtn" onclick="manualRefresh()"><span class="ic">🔄</span> Sincronizar</button>
+        <div class="userchip"><b>${s.name}</b>${ROLE_LABEL[s.role]}</div>
+        <button class="navbtn" onclick="doLogout()"><span class="ic">🚪</span> Salir</button>
+      </div>
+    </div>
+    <div style="flex:1; min-width:0; display:flex; flex-direction:column;">
+      <div class="topbar">
+        <div class="brand">🌶️ Birria Express</div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.15);border-color:transparent;color:#fff;" onclick="manualRefresh()">🔄</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.15);border-color:transparent;color:#fff;" onclick="doLogout()">🚪</button>
         </div>
+      </div>
+      <div class="main" id="mainView"></div>
     </div>
   </div>
+  <div class="bottomnav">${bottomItems}</div>
+  `;
+  await renderView();
+}
 
-  <div id="vistaAdminFiltros" class="hidden fixed inset-0 bg-slate-50 z-[110] overflow-auto flex flex-col">
-    <div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center shadow-md">
-      <div>
-         <h2 class="text-xl font-bold">Base de Datos General (Solo Lectura)</h2>
-         <p class="text-xs text-slate-300 mt-1">Busca por palabra exacta o establece rangos de fechas.</p>
-      </div>
-      <div class="flex items-center gap-3">
-        <button id="btnSincronizarAdminFiltros" onclick="sincronizarVistaAdmin()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
-          🔄 Sincronizar
-        </button>
-        <button onclick="cerrarVistaGeneralAdmin()" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">
-           Volver a la Agenda
-        </button>
-      </div>
-    </div>
-    <div class="flex-1 p-6 overflow-auto">
-      <div id="cargandoTablaAdmin" class="text-center text-slate-500 py-10 font-bold">Recuperando registros desde Google Sheets...</div>
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-auto">
-        <table class="min-w-full text-left text-xs border-collapse hidden" id="tablaAdminCompleta">
-          <thead class="bg-slate-100 text-slate-700 sticky top-0 shadow-sm" id="tablaAdminHeader"></thead>
-          <tbody id="tablaAdminBody" class="divide-y divide-slate-200"></tbody>
-        </table>
-      </div>
-      <div class="mt-4 text-right text-xs font-semibold text-slate-500" id="totalFilasMostradas"></div>
-    </div>
+function goView(v){ state.view = v; state.cart=[]; state.customer=''; state.generalNotes=''; renderShell(); }
+async function doLogout(){ await logHistory('Cierre de sesión', (getSession()||{}).name+' cerró sesión'); clearSession(); renderLogin(); }
+async function manualRefresh(){
+  dbCache = null;
+  await loadDB();
+  await renderView();
+  toast('Sincronizado con Google Sheets');
+}
+
+async function renderView(){
+  const el = document.getElementById('mainView');
+  if(!el) return;
+  const v = state.view;
+  if(v==='pedidos') el.innerHTML = await viewPedidos();
+  else if(v==='cocina') el.innerHTML = await viewCocina();
+  else if(v==='caja') el.innerHTML = await viewCaja();
+  else if(v==='productos') el.innerHTML = await viewProductos();
+  else if(v==='corte') el.innerHTML = await viewCorte();
+  else if(v==='usuarios') el.innerHTML = await viewUsuarios();
+  afterRenderHooks();
+}
+function afterRenderHooks(){
+  if(state.view==='pedidos') renderCart();
+}
+
+/* =========================================================================
+   VIEW: PEDIDOS
+   ========================================================================= */
+async function viewPedidos(){
+  const db = await loadDB();
+  const cats = ['Todos', ...new Set(db.products.map(p=>p.category))];
+  const chips = cats.map(c=>`<button class="chip ${state.prodFilter===c?'active':''}" onclick="setProdFilter('${c}')">${c}</button>`).join('');
+  const prods = db.products.filter(p=> state.prodFilter==='Todos' || p.category===state.prodFilter);
+  const tiles = prods.map(p=>`
+    <button class="prod-tile" onclick="addToCart(${p.id})">
+      <span class="pname">${p.name}</span>
+      <span class="pcat">${p.category}</span>
+      <span class="pprice">${money(p.price)}</span>
+    </button>`).join('') || `<div class="empty-state" style="grid-column:1/-1">Sin productos en esta categoría.</div>`;
+
+  return `
+  <div class="view-head">
+    <div><h2>Levantar pedido</h2><p>Selecciona productos, indica cantidades y envía a cocina y caja.</p></div>
   </div>
-
-  <script>
-    // ==========================================
-    // ADAPTACIÓN API PARA GITHUB PAGES / HOST EXTERNO
-    // ==========================================
-    const URL_API_GAS = "https://script.google.com/macros/s/AKfycbwJUFhAMu1lb4xNsCThFiWCz0Xi12ykBdOtyIciSNrvuFjfZpyb-UJSAijw3xReGl30kA/exec"; // REEMPLAZA ESTO CON LA URL FINAL (/exec)
-
-    if (typeof google === 'undefined') {
-      window.google = {
-        script: {
-          run: {
-            withSuccessHandler: function(onSuccess) { this._onSuccess = onSuccess; return this; },
-            withFailureHandler: function(onFailure) { this._onFailure = onFailure; return this; },
-            _call: function(funcName, args) {
-              const successCb = this._onSuccess;
-              const failureCb = this._onFailure;
-              this._onSuccess = null;
-              this._onFailure = null;
-
-              fetch(URL_API_GAS, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ func: funcName, args: args })
-              })
-              .then(res => res.json())
-              .then(data => {
-                if (data && data.error) { if (failureCb) failureCb(data.error); } 
-                else { if (successCb) successCb(data.result); }
-              })
-              .catch(err => { if (failureCb) failureCb(err); });
-            },
-            validarAutenticacion: function(pin) { this._call('validarAutenticacion', [pin]); },
-            obtenerDatosAgenda: function() { this._call('obtenerDatosAgenda', []); },
-            buscarClienteWispHub: function(n, id) { this._call('buscarClienteWispHub', [n, id]); },
-            guardarRegistroAgenda: function(d) { this._call('guardarRegistroAgenda', [d]); },
-            eliminarRegistroAgenda: function(r, u) { this._call('eliminarRegistroAgenda', [r, u]); },
-            renombrarCuadrillaBD: function(v, n) { this._call('renombrarCuadrillaBD', [v, n]); },
-            obtenerTodoContenidoBaseDatos: function() { this._call('obtenerTodoContenidoBaseDatos', []); }
-          }
-        }
-      };
-    }
-
-    const safeStorage = {
-        mem: {},
-        getItem: function(key) { try { return localStorage.getItem(key); } catch(e) { return this.mem[key] || null; } },
-        setItem: function(key, val) { try { localStorage.setItem(key, val); } catch(e) { this.mem[key] = val.toString(); } },
-        removeItem: function(key) { try { localStorage.removeItem(key); } catch(e) { delete this.mem[key]; } }
-    };
-    const safeSession = {
-        mem: {},
-        getItem: function(key) { try { return sessionStorage.getItem(key); } catch(e) { return this.mem[key] || null; } },
-        setItem: function(key, val) { try { sessionStorage.setItem(key, val); } catch(e) { this.mem[key] = val.toString(); } },
-        removeItem: function(key) { try { sessionStorage.removeItem(key); } catch(e) { delete this.mem[key]; } }
-    };
-
-    const tecnicosPorDefecto = ["Cuadrilla 1", "Cuadrilla 2", "Técnico Alfa"];
-    const motivosPorDefecto = ["Instalación", "Soporte", "Cambio de Domicilio", "Desinstalación"];
-    const horariosPorDefecto = ["08:00 - 10:00", "10:00 - 12:00", "12:00 - 14:00", "Disponibilidad"];
-    const agentesPorDefecto = ["Agente Juan", "Agente María", "Call Center"];
-    const coloniasPorDefecto = ["Centro", "Revolución"];
-    const planesPorDefecto = ["Básico", "Intermedio", "Avanzado"];
-    const confirmadaPorDefecto = ["No", "Sí"];
-    const serealizoPorDefecto = ["Pendiente", "Sí", "No"];
-    const yafueclientePorDefecto = ["No", "Sí"];
-    const bienvenidaPorDefecto = ["Sí", "No"];
-    const mediosPorDefecto = ["Facebook", "Recomendación", "Folleto", "Página Web", "Otros"];
-    
-    // PERMISOS DE TÉCNICOS ACORDES A ESTRUCTURA
-    const camposPermitidosTecnico = [
-      'form_monto', 'form_comentarios', 'form_comentarioscat', 'form_comentariosdeltecnico', 'form_plan'
-    ];
-    
-    let baseDatosGoogle = [];
-    let espaciosPorFecha = {};
-    let rolUsuario = null;
-    
-    function normalizarTecnico(texto) {
-        if (!texto) return "";
-        return texto.toString().trim().toLowerCase().split(/\s+/).map(function(w){
-            return w.charAt(0).toUpperCase() + w.slice(1);
-        }).join(' ');
-    }
-
-    window.onload = function() {
-      try {
-          const hoy = new Date().toISOString().split('T')[0];
-          document.getElementById('filtroFecha').value = hoy;
-          
-          if(!safeStorage.getItem('config_lista_tecnicos')) safeStorage.setItem('config_lista_tecnicos', JSON.stringify(tecnicosPorDefecto));
-          if(!safeStorage.getItem('config_lista_motivos')) safeStorage.setItem('config_lista_motivos', JSON.stringify(motivosPorDefecto));
-          if(!safeStorage.getItem('config_lista_horarios')) safeStorage.setItem('config_lista_horarios', JSON.stringify(horariosPorDefecto));
-          if(!safeStorage.getItem('config_lista_agentes')) safeStorage.setItem('config_lista_agentes', JSON.stringify(agentesPorDefecto));
-          if(!safeStorage.getItem('config_lista_colonias')) safeStorage.setItem('config_lista_colonias', JSON.stringify(coloniasPorDefecto));
-          if(!safeStorage.getItem('config_lista_planes')) safeStorage.setItem('config_lista_planes', JSON.stringify(planesPorDefecto));
-          if(!safeStorage.getItem('config_lista_confirmada')) safeStorage.setItem('config_lista_confirmada', JSON.stringify(confirmadaPorDefecto));
-          if(!safeStorage.getItem('config_lista_serealizo')) safeStorage.setItem('config_lista_serealizo', JSON.stringify(serealizoPorDefecto));
-          if(!safeStorage.getItem('config_lista_yafuecliente')) safeStorage.setItem('config_lista_yafuecliente', JSON.stringify(yafueclientePorDefecto));
-          if(!safeStorage.getItem('config_lista_bienvenida')) safeStorage.setItem('config_lista_bienvenida', JSON.stringify(bienvenidaPorDefecto));
-          if(!safeStorage.getItem('config_lista_medios')) safeStorage.setItem('config_lista_medios', JSON.stringify(mediosPorDefecto));
-          
-          let cached = safeStorage.getItem('espacios_por_fecha_v4');
-          if(cached) espaciosPorFecha = JSON.parse(cached);
-          poblarSelects();
-
-          const sesionGuardada = safeSession.getItem('sesion_activa');
-          if (sesionGuardada) {
-            iniciarAppConRol(sesionGuardada);
-          }
-      } catch (errorFalla) {
-          const m = document.getElementById('msgErrorPin');
-          if (m) {
-            m.innerText = "Error inicializando la app: " + errorFalla.message;
-            m.classList.remove('hidden');
-          }
-      }
-    };
-    
-    function verificarPin() {
-      try {
-          const pinInput = document.getElementById('inputPin');
-          const pin = pinInput.value.trim();
-          const btn = document.getElementById('btnLogin');
-          const msgError = document.getElementById('msgErrorPin');
-          
-          if(!pin) return;
-          
-          btn.innerHTML = "⏳ Verificando...";
-          btn.disabled = true;
-          msgError.classList.add('hidden');
-          
-          if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run
-              .withSuccessHandler(function(res) {
-                if (res.status === 'success') {
-                  safeSession.setItem('sesion_activa', res.role);
-                  if (res.nombre) safeSession.setItem('nombre_usuario', res.nombre);
-                  iniciarAppConRol(res.role);
-                } else {
-                  msgError.innerText = res.message;
-                  msgError.classList.remove('hidden');
-                  btn.innerHTML = "Ingresar";
-                  btn.disabled = false;
-                }
-              })
-              .withFailureHandler(function(err) {
-                msgError.innerText = "Error servidor: " + err;
-                msgError.classList.remove('hidden');
-                btn.innerHTML = "Ingresar";
-                btn.disabled = false;
-              })
-              .validarAutenticacion(pin);
-          } else {
-            if(pin === '1234') iniciarAppConRol('admin');
-            else if(pin === '5678') iniciarAppConRol('tecnico');
-            else {
-              msgError.innerText = "PIN Incorrecto";
-              msgError.classList.remove('hidden');
-              btn.innerHTML = "Ingresar";
-              btn.disabled = false;
-            }
-          }
-      } catch (e) {
-          const err = document.getElementById('msgErrorPin');
-          if (err) {
-              err.innerText = "Error en el navegador: " + e.message;
-              err.classList.remove('hidden');
-          }
-          document.getElementById('btnLogin').innerHTML = "Ingresar";
-          document.getElementById('btnLogin').disabled = false;
-      }
-    }
-
-    function iniciarAppConRol(rol) {
-      rolUsuario = rol;
-      document.getElementById('modalLogin').classList.add('hidden');
-      document.getElementById('appContenedor').classList.remove('hidden');
-      document.getElementById('badgeRol').innerText = rol === 'admin' ? 'Administrador' : 'Técnico';
-      
-      if (rol === 'tecnico') {
-        document.getElementById('panelAdmin').classList.add('hidden');
-        document.querySelectorAll('.admin-only').forEach(function(el) { el.classList.add('hidden') });
-      } else {
-        document.getElementById('panelAdmin').classList.remove('hidden');
-        document.querySelectorAll('.admin-only').forEach(function(el) { el.classList.remove('hidden') });
-      }
-      
-      sincronizarDatos();
-    }
-
-    function cerrarSesion() { 
-      safeSession.removeItem('sesion_activa'); 
-      safeSession.removeItem('nombre_usuario');
-      rolUsuario = null;
-      document.getElementById('inputPin').value = '';
-      document.getElementById('appContenedor').classList.add('hidden');
-      document.getElementById('modalLogin').classList.remove('hidden');
-      
-      const btn = document.getElementById('btnLogin');
-      btn.innerHTML = "Ingresar";
-      btn.disabled = false;
-    }
-
-    let clientesTemporalesWisphub = [];
-    
-    function buscarEnWisphub(ev) {
-      if (ev) ev.preventDefault();
-      const nombreInput = document.getElementById('form_nombredelcliente').value.trim();
-      const inputIdElement = document.getElementById('form_id_wisphub');
-      const idInput = inputIdElement ? inputIdElement.value.trim() : "";
-      
-      if (nombreInput === "" && idInput === "") {
-        alert("Por favor, ingresa el Nombre o el ID del cliente para buscar en WispHub.");
-        return;
-      }
-      
-      const btn = ev.currentTarget || document.querySelector('button[title="Buscar en WispHub"]');
-      const originalText = btn.innerHTML;
-      btn.innerHTML = "⏳";
-      btn.disabled = true;
-      
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run
-          .withSuccessHandler(function(res) {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-            
-            if (res.status === 'success') {
-              llenarCamposClienteWisp(res.data);
-              alert("Datos del cliente encontrados y cargados exitosamente.");
-            } else if (res.status === 'multiple') {
-              mostrarModalSimilares(res.similares);
-            } else {
-              alert(res.message || "No se encontró ningún cliente con ese criterio en WispHub.");
-            }
-          })
-          .withFailureHandler(function(err) {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-            alert("Error al intentar conectar con WispHub: " + err);
-          })
-          .buscarClienteWispHub(nombreInput, idInput);
-      } else {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        alert("Entorno local detectado. Requiere despliegue de Apps Script.");
-      }
-    }
-
-    function llenarCamposClienteWisp(data) {
-      if(data.nombre) document.getElementById('form_nombredelcliente').value = data.nombre;
-      if(data.ip) document.getElementById('form_ip').value = data.ip;
-      if(data.telefono) document.getElementById('form_telefono').value = data.telefono.replace(/[^0-9]/g, '');
-      if(data.calleynumero) document.getElementById('form_calleynumero').value = data.calleynumero;
-      
-      if(data.colonia) {
-        let selectColonia = document.getElementById('form_coloniaofracc');
-        if (selectColonia) {
-          let options = Array.from(selectColonia.options).map(opt => opt.value);
-          if (!options.includes(data.colonia)) {
-            let opt = document.createElement('option');
-            opt.value = data.colonia;
-            opt.text = data.colonia;
-            selectColonia.appendChild(opt);
-          }
-          selectColonia.value = data.colonia;
-        }
-      }
-      if(data.coordenadas) document.getElementById('form_coordenadasoentrecalles').value = data.coordenadas;
-      
-      const badge = document.getElementById('badge_estado_wisphub');
-      const contenedorBadge = document.getElementById('contenedor_estado_wisphub');
-      if(badge && contenedorBadge) {
-          let estado = (data.estado || "Desconocido").toUpperCase();
-          badge.innerText = estado;
-          
-          badge.className = "text-[11px] uppercase tracking-wider font-black px-2 py-1 rounded-lg border shadow-sm";
-          if(estado === 'ACTIVO' || estado === 'INSTALADO') {
-              badge.classList.add('bg-emerald-100', 'text-emerald-800', 'border-emerald-300');
-          } else if(estado === 'SUSPENDIDO' || estado === 'CORTADO' || estado === 'MOROSO') {
-              badge.classList.add('bg-rose-100', 'text-rose-800', 'border-rose-300');
-          } else if(estado === 'INACTIVO' || estado === 'DESINSTALADO' || estado === 'CANCELADO') {
-              badge.classList.add('bg-slate-100', 'text-slate-800', 'border-slate-300');
-          } else if(estado === 'NUEVO' || estado === 'PENDIENTE') {
-              badge.classList.add('bg-blue-100', 'text-blue-800', 'border-blue-300');
-          } else {
-              badge.classList.add('bg-amber-100', 'text-amber-800', 'border-amber-300');
-          }
-          
-          contenedorBadge.classList.remove('hidden');
-      }
-    }
-
-    window.clientesSimilaresTemp = [];
-    
-    function mostrarModalSimilares(similares) {
-      window.clientesSimilaresTemp = similares;
-      renderizarListaSimilares(similares);
-      const filtroInput = document.getElementById('filtroIpSimilares');
-      if(filtroInput) filtroInput.value = "";
-      document.getElementById('modalClientesSimilares').classList.remove('hidden');
-    }
-
-    function renderizarListaSimilares(lista) {
-      const contenedor = document.getElementById('listaClientesSimilares');
-      contenedor.innerHTML = "";
-      if(!lista || lista.length === 0) {
-         contenedor.innerHTML = "<p class='text-sm text-slate-500 font-medium p-2'>No se encontraron coincidencias bajo esa dirección IP.</p>";
-         return;
-      }
-      
-      lista.forEach(function(c) {
-        const div = document.createElement('div');
-        div.className = "p-3 border border-slate-200 rounded-lg hover:bg-indigo-50 cursor-pointer transition-colors shadow-sm";
-        div.onclick = function() {
-          llenarCamposClienteWisp(c);
-          document.getElementById('modalClientesSimilares').classList.add('hidden');
-        };
-        
-        let estado = (c.estado || "Desconocido").toUpperCase();
-        let colorClase = estado === 'ACTIVO' ? 'bg-emerald-500' : (estado.includes('SUSPENDIDO') || estado === 'MOROSO' ? 'bg-rose-500' : 'bg-amber-500');
-
-        div.innerHTML = `
-          <div class="font-bold text-sm text-indigo-700">${c.nombre || 'Sin Nombre'} <span class="text-[10px] text-white bg-slate-400 px-1.5 py-0.5 rounded ml-2">ID: ${c.id || 'N/A'}</span> <span class="text-[10px] text-white ${colorClase} px-1.5 py-0.5 rounded ml-1">${estado}</span></div>
-          <div class="text-xs text-slate-600 mt-1.5 font-medium">
-            <span class="inline-block mr-3 bg-slate-100 px-1 py-0.5 rounded">📶 IP: <span class="text-slate-800">${c.ip || 'N/A'}</span></span>
-            <span class="inline-block mr-3">📞 Tel: ${c.telefono || 'N/A'}</span>
-          </div>
-          <div class="text-[11px] text-slate-500 mt-1.5 line-clamp-1">📍 ${c.calleynumero || ''} ${c.colonia || ''}</div>
-        `;
-        contenedor.appendChild(div);
-      });
-    }
-
-    function filtrarSimilaresIp() {
-      const filtro = document.getElementById('filtroIpSimilares').value.toLowerCase().trim();
-      const filtrados = window.clientesSimilaresTemp.filter(c => (c.ip || "").toLowerCase().includes(filtro));
-      renderizarListaSimilares(filtrados);
-    }
-    
-    function llenarFormularioWispHub(data) {
-        if (data.nombre) document.getElementById('form_nombredelcliente').value = data.nombre;
-        document.getElementById('form_ip').value = data.ip || "";
-        document.getElementById('form_telefono').value = data.telefono || "";
-        document.getElementById('form_calleynumero').value = data.calleynumero || "";
-        document.getElementById('form_coordenadasoentrecalles').value = data.coordenadas || "";
-        if (data.colonia) {
-            let valorExactoColonia = asegurarOpcionSelect('form_coloniaofracc', data.colonia);
-            document.getElementById('form_coloniaofracc').value = valorExactoColonia;
-            
-            try {
-                let listaColonias = [];
-                let stored = safeStorage.getItem('config_lista_colonias');
-                if (stored) listaColonias = JSON.parse(stored);
-                
-                if (listaColonias.indexOf(valorExactoColonia) === -1) {
-                    listaColonias.push(valorExactoColonia);
-                    safeStorage.setItem('config_lista_colonias', JSON.stringify(listaColonias));
-                }
-            } catch(e) {
-                console.error("Error guardando nueva colonia", e);
-            }
-        }
-        
-        const badge = document.getElementById('badge_estado_wisphub');
-        const contenedorBadge = document.getElementById('contenedor_estado_wisphub');
-        if(badge && contenedorBadge) {
-            let estado = (data.estado || "Desconocido").toUpperCase();
-            badge.innerText = estado;
-            badge.className = "text-[11px] uppercase tracking-wider font-black px-2 py-1 rounded-lg border shadow-sm";
-            if(estado === 'ACTIVO' || estado === 'INSTALADO') {
-                badge.classList.add('bg-emerald-100', 'text-emerald-800', 'border-emerald-300');
-            } else if(estado === 'SUSPENDIDO' || estado === 'CORTADO' || estado === 'MOROSO') {
-                badge.classList.add('bg-rose-100', 'text-rose-800', 'border-rose-300');
-            } else if(estado === 'INACTIVO' || estado === 'DESINSTALADO' || estado === 'CANCELADO') {
-                badge.classList.add('bg-slate-100', 'text-slate-800', 'border-slate-300');
-            } else if(estado === 'NUEVO' || estado === 'PENDIENTE') {
-                badge.classList.add('bg-blue-100', 'text-blue-800', 'border-blue-300');
-            } else {
-                badge.classList.add('bg-amber-100', 'text-amber-800', 'border-amber-300');
-            }
-            contenedorBadge.classList.remove('hidden');
-        }
-    }
-
-    function mostrarOpcionesWispHub(clientes) {
-        clientesTemporalesWisphub = clientes;
-        const inputFiltro = document.getElementById('filtroIpWisphub');
-        inputFiltro.value = ''; 
-        
-        renderizarListaWisphub(clientesTemporalesWisphub);
-        inputFiltro.onkeyup = function(e) {
-            const terminoBusqueda = e.target.value.toLowerCase().trim();
-            if (!terminoBusqueda) {
-                renderizarListaWisphub(clientesTemporalesWisphub);
-            } else {
-                const filtrados = clientesTemporalesWisphub.filter(c => (c.ip || "").toLowerCase().includes(terminoBusqueda));
-                renderizarListaWisphub(filtrados);
-            }
-        };
-        
-        document.getElementById('modalWisphubSeleccion').classList.remove('hidden');
-    }
-    
-    function renderizarListaWisphub(lista) {
-        const contenedor = document.getElementById('listaClientesWisphub');
-        contenedor.innerHTML = '';
-        
-        if (lista.length === 0) {
-            contenedor.innerHTML = '<div class="text-sm text-slate-500 text-center py-4 font-medium">No se encontraron registros con esa IP.</div>';
-            return;
-        }
-        
-        lista.forEach(function(c) {
-            const div = document.createElement('div');
-            div.className = "p-3 border border-slate-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 cursor-pointer transition-colors";
-            
-            const ipVisual = c.ip ? `<span class="font-bold text-indigo-700">IP: ${c.ip}</span> | ` : `<span class="text-slate-400">Sin IP registrada</span> | `;
-            
-            let estado = (c.estado || "Desconocido").toUpperCase();
-            let colorClase = estado === 'ACTIVO' ? 'bg-emerald-500' : (estado.includes('SUSPENDIDO') || estado === 'MOROSO' ? 'bg-rose-500' : 'bg-amber-500');
-            
-            div.innerHTML = '<div class="font-bold text-sm text-slate-800">' + (c.nombre || 'Sin nombre') + ' <span class="text-[10px] text-white ' + colorClase + ' px-1.5 py-0.5 rounded ml-1">' + estado + '</span></div>' +
-                            '<div class="text-xs text-slate-600 mt-1.5">' + ipVisual + '📍 ' + (c.calleynumero || 'Sin dirección') + ' | 🏙️ ' + (c.colonia || 'Sin colonia') + '</div>';
-            div.onclick = function() {
-                llenarFormularioWispHub(c);
-                cerrarModalWisphub();
-                alert("¡Datos del cliente seleccionados y rellenados con éxito!");
-            };
-            contenedor.appendChild(div);
-        });
-    }
-
-    function cerrarModalWisphub() {
-        document.getElementById('modalWisphubSeleccion').classList.add('hidden');
-    }
-
-    function sincronizarDatos() {
-      const btn = document.getElementById('btnSincronizar');
-      if(btn) btn.innerHTML = "⏳ Sincronizando...";
-      
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run
-          .withSuccessHandler(function(datos) {
-            baseDatosGoogle = datos || [];
-            baseDatosGoogle.forEach(function(c) {
-                if (c.tecnico) c.tecnico = normalizarTecnico(c.tecnico);
-            });
-            renderizarAgenda();
-            if(btn) btn.innerHTML = "🔄 Sincronizar";
-          })
-          .withFailureHandler(function(err) {
-            alert("Error al sincronizar datos: " + err);
-            if(btn) btn.innerHTML = "🔄 Sincronizar";
-          })
-          .obtenerDatosAgenda();
-      }
-    }
-
-    function renderizarAgenda() {
-      const fechaActual = document.getElementById('filtroFecha').value;
-      if(!fechaActual) return;
-      
-      const contenedor = document.getElementById('contenedorDias');
-      contenedor.innerHTML = '';
-      
-      window.cuadrillasManuales = window.cuadrillasManuales || {};
-      window.cuadrillasOcultas = window.cuadrillasOcultas || {};
-      let manualesHoy = window.cuadrillasManuales[fechaActual] || {};
-      let ocultasHoy = window.cuadrillasOcultas[fechaActual] || {};
-
-      let cuadrillasHoy = [];
-      baseDatosGoogle.forEach(function(c) {
-          if (c.fecha === fechaActual && c.tecnico && cuadrillasHoy.indexOf(c.tecnico) === -1) {
-              cuadrillasHoy.push(c.tecnico);
-          }
-      });
-      
-      cuadrillasHoy.forEach(function(tec) {
-          let citasTec = baseDatosGoogle.filter(function(c) { return c.fecha === fechaActual && c.tecnico === tec; });
-
-          citasTec.sort(function(a, b) {
-              let horA = (a.horario || "").trim().toLowerCase();
-              let horB = (b.horario || "").trim().toLowerCase();
-
-              let isDispA = horA === "disponibilidad";
-              let isDispB = horB === "disponibilidad";
-
-              if (isDispA && !isDispB) return 1;
-              if (!isDispA && isDispB) return -1;
-
-              if (horA < horB) return -1;
-              if (horA > horB) return 1;
-              return 0;
-          });
-
-          citasTec.forEach(function(cita, idx) {
-              cita.espacio = idx + 1;
-          });
-      });
-      
-      let cuadrillasDelDia = {};
-      baseDatosGoogle.forEach(function(cita) {
-          if (cita.fecha === fechaActual && cita.tecnico && !ocultasHoy[cita.tecnico]) {
-              if (!cuadrillasDelDia[cita.tecnico]) {
-                  let countAnterior = (espaciosPorFecha[fechaActual] && espaciosPorFecha[fechaActual][cita.tecnico]) ? espaciosPorFecha[fechaActual][cita.tecnico] : 4;
-                  cuadrillasDelDia[cita.tecnico] = countAnterior;
-              }
-              
-              if (!cita.espacio || isNaN(parseInt(cita.espacio)) || parseInt(cita.espacio) <= 0) {
-                  let esp = 1;
-                  while (baseDatosGoogle.some(function(c) { return c.fecha === fechaActual && c.tecnico === cita.tecnico && c.espacio == esp && c.rowNum != cita.rowNum; })) {
-                      esp++;
-                  }
-                  cita.espacio = esp;
-              }
-              let espNum = parseInt(cita.espacio);
-              
-              if (espNum > cuadrillasDelDia[cita.tecnico]) {
-                  cuadrillasDelDia[cita.tecnico] = espNum;
-              }
-          }
-      });
-      
-      Object.keys(manualesHoy).forEach(function(tec) {
-          if (!cuadrillasDelDia[tec] && !ocultasHoy[tec]) {
-              cuadrillasDelDia[tec] = (espaciosPorFecha[fechaActual] && espaciosPorFecha[fechaActual][tec]) ? espaciosPorFecha[fechaActual][tec] : 4;
-          }
-      });
-      
-      espaciosPorFecha[fechaActual] = cuadrillasDelDia;
-      safeStorage.setItem('espacios_por_fecha_v4', JSON.stringify(espaciosPorFecha));
-      
-      const nombresCuadrillas = Object.keys(cuadrillasDelDia);
-      
-      if (nombresCuadrillas.length === 0) {
-          contenedor.innerHTML = '<p class="text-center text-slate-500 py-10 font-medium">No hay cuadrillas registradas para el día seleccionado.</p>';
-          return;
-      }
-      
-      const gridDiv = document.createElement('div');
-      gridDiv.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-" + Math.min(nombresCuadrillas.length, 4) + " gap-4 items-start";
-      
-      nombresCuadrillas.forEach(function(cuadrilla) {
-          const numEspacios = cuadrillasDelDia[cuadrilla];
-          const colDiv = document.createElement('div');
-          colDiv.className = 'bg-slate-100 rounded-lg p-3 shadow-inner min-h-[300px] border border-slate-200';
-          
-          let adminControles = "";
-          if (rolUsuario === 'admin') {
-              adminControles = '<div class="flex gap-1 items-center bg-indigo-700 p-1 rounded ml-2 shrink-0">' +
-                  '<button onclick="editarCuadrilla(\'' + fechaActual + '\', \'' + cuadrilla + '\')" title="Editar Nombre" class="hover:bg-indigo-500 px-1.5 rounded text-sm transition-colors">✏️</button>' +
-                  '<button onclick="eliminarCuadrilla(\'' + fechaActual + '\', \'' + cuadrilla + '\')" title="Eliminar Columna" class="hover:bg-rose-500 px-1.5 rounded text-sm transition-colors">🗑️</button>' +
-                  '<div class="w-px h-4 bg-indigo-400 mx-0.5"></div>' +
-                  '<button onclick="modificarEspacios(\'' + fechaActual + '\', \'' + cuadrilla + '\', \'sumar\')" title="Añadir espacio" class="hover:bg-indigo-500 px-1.5 rounded text-sm font-bold transition-colors">+</button>' +
-                  '<button onclick="modificarEspacios(\'' + fechaActual + '\', \'' + cuadrilla + '\', \'restar\')" title="Quitar espacio" class="hover:bg-indigo-500 px-1.5 rounded text-sm font-bold transition-colors">-</button>' +
-              '</div>';
-          }
-          
-          let btnRuta = '<button onclick="abrirRutaMapa(\'' + cuadrilla + '\', \'' + fechaActual + '\')" title="Ver ruta en mapa" class="hover:bg-indigo-500 bg-indigo-700 px-1.5 py-0.5 rounded text-xs transition-colors ml-2 shrink-0 border border-indigo-500 shadow-sm flex items-center gap-1">🗺️ Ruta</button>';
-          let htmlCol = '<div class="flex justify-between items-center bg-indigo-600 text-white p-2 rounded mb-3 shadow">' +
-              '<h3 class="font-bold text-sm tracking-wide uppercase truncate w-full pl-1">' + cuadrilla + '</h3>' + btnRuta + adminControles +
-          '</div><div class="space-y-3">';
-          
-          for(let i = 1; i <= numEspacios; i++) {
-              const cita = baseDatosGoogle.find(function(c) { return c.tecnico === cuadrilla && c.fecha === fechaActual && c.espacio == i; });
-              if (cita) {
-                  let motivoText = (cita.motivo || "").toLowerCase();
-                  let colorClass = "border-slate-300 bg-white hover:border-indigo-400 text-slate-800"; 
-                  
-                  if (motivoText.indexOf("instalación") > -1 || motivoText.indexOf("instalacion") > -1 || motivoText.indexOf("cambio de domicilio") > -1) {
-                      colorClass = "border-blue-500 bg-blue-50 hover:bg-blue-100 text-blue-900";
-                  } else if (motivoText.indexOf("soporte") > -1) {
-                      colorClass = "border-orange-500 bg-orange-50 hover:bg-orange-100 text-orange-900";
-                  } else if (motivoText.indexOf("desinstalación") > -1 || motivoText.indexOf("desinstalacion") > -1) {
-                      colorClass = "border-red-500 bg-red-50 hover:bg-red-100 text-red-900";
-                  }
-
-                  let urlMaps = cita.coordenadasoentrecalles ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(cita.coordenadasoentrecalles) : "#";
-                  let coordsHtml = cita.coordenadasoentrecalles ? '<a href="' + urlMaps + '" target="_blank" onclick="event.stopPropagation()" class="text-indigo-600 hover:text-indigo-800 underline text-[11px] font-bold truncate block mt-1" title="Abrir en Google Maps">📍 ' + cita.coordenadasoentrecalles + '</a>' : '';
-                  let realLink = cita.linkCliente ? (cita.linkCliente.indexOf('http') === 0 ? cita.linkCliente : 'https://' + cita.linkCliente) : "#";
-                  let linkHtml = cita.linkCliente ? '<a href="' + realLink + '" target="_blank" onclick="event.stopPropagation()" class="text-indigo-600 hover:text-indigo-800 underline text-[11px] font-bold break-all truncate block mt-1">🔗 Enlace del cliente</a>' : '';
-                  
-                  let extrasHtml = '';
-                  if (cita.bienvenida) extrasHtml += '<div class="text-[10.5px] text-slate-600 mt-1">👋 Bienvenida: <span class="font-bold">' + cita.bienvenida + '</span></div>';
-                  if (cita.pormediosediocuentadenosotros) {
-                      let medioTexto = cita.pormediosediocuentadenosotros;
-                      if (cita.otroscual) medioTexto += ' (' + cita.otroscual + ')';
-                      extrasHtml += '<div class="text-[10.5px] text-slate-600">📢 Medio: <span class="font-bold">' + medioTexto + '</span></div>';
-                  }
-
-                  // INTEGRACIÓN WHATSAPP Y LLAMADAS
-                  if (cita.telefono) {
-                      let numLimpio = cita.telefono.replace(/[^0-9]/g, '');
-                      extrasHtml += '<div class="mt-2 flex gap-2">' +
-                          '<a href="tel:' + numLimpio + '" target="_blank" onclick="event.stopPropagation()" class="flex-1 text-center bg-slate-100 border border-slate-300 text-slate-700 px-2 py-1 rounded text-[10px] font-bold hover:bg-slate-200 transition-colors shadow-sm">📞 Llamar</a>' +
-                          '<a href="https://wa.me/' + numLimpio + '" target="_blank" onclick="event.stopPropagation()" class="flex-1 text-center bg-emerald-50 border border-emerald-300 text-emerald-700 px-2 py-1 rounded text-[10px] font-bold hover:bg-emerald-100 transition-colors shadow-sm">💬 WhatsApp</a>' +
-                      '</div>';
-                  }
-                  
-                  htmlCol += '<div class="slot-card border-l-4 ' + colorClass + ' p-3 rounded-lg shadow-sm cursor-pointer transition-colors relative" ' +
-                           'draggable="' + (rolUsuario === 'admin') + '" ' +
-                           'ondragstart="dragStart(event, ' + cita.rowNum + ')" ' +
-                           'onclick="abrirModalEdicion(' + cita.rowNum + ')" ' +
-                           'ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="drop(event, \'' + cuadrilla + '\', ' + i + ')">' +
-                            '<div class="absolute top-2 right-2 text-[10px] bg-white/50 text-slate-600 px-1.5 py-0.5 rounded font-bold">#' + i + '</div>' +
-                          '<div class="font-black text-sm pr-6">' + (cita.nombredelcliente || 'Sin Nombre') + '</div>' +
-                          '<div class="text-[11px] font-bold mt-1 opacity-90">🕒 ' + (cita.horario || '--:--') + ' | <span class="uppercase">' + (cita.motivo || '') + '</span></div>' +
-                          extrasHtml +
-                          coordsHtml + linkHtml + 
-                      '</div>';
-              } else {
-                  htmlCol += '<div class="border-2 border-dashed border-slate-300 rounded-lg p-3 text-center hover:bg-indigo-50 hover:border-indigo-300 transition-colors cursor-pointer text-slate-400 hover:text-indigo-600 min-h-[80px] flex flex-col items-center justify-center" ' +
-                           'onclick="abrirModalNuevo(\'' + cuadrilla + '\', ' + i + ')" ' +
-                           'ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="drop(event, \'' + cuadrilla + '\', ' + i + ')">' +
-                          '<span class="text-xl leading-none block mb-1">+</span>' +
-                          '<span class="text-[10px] font-bold uppercase tracking-wider">Añadir al Espacio ' + i + '</span>' +
-                      '</div>';
-              }
-          }
-          htmlCol += '</div>';
-          colDiv.innerHTML = htmlCol;
-          gridDiv.appendChild(colDiv);
-      });
-      contenedor.appendChild(gridDiv);
-    }
-
-    function editarCuadrilla(fecha, nombreViejo) {
-        let nombreNuevo = prompt("Ingresa el nuevo nombre para esta cuadrilla:", nombreViejo);
-        if (!nombreNuevo) return;
-        
-        nombreNuevo = normalizarTecnico(nombreNuevo);
-        if (nombreNuevo === "" || nombreNuevo === normalizarTecnico(nombreViejo)) return;
-        if (espaciosPorFecha[fecha] && espaciosPorFecha[fecha][nombreViejo]) {
-            espaciosPorFecha[fecha][nombreNuevo] = espaciosPorFecha[fecha][nombreViejo];
-            delete espaciosPorFecha[fecha][nombreViejo];
-            safeStorage.setItem('espacios_por_fecha_v4', JSON.stringify(espaciosPorFecha));
-        }
-        
-        if (window.cuadrillasManuales && window.cuadrillasManuales[fecha] && window.cuadrillasManuales[fecha][nombreViejo]) {
-            delete window.cuadrillasManuales[fecha][nombreViejo];
-            window.cuadrillasManuales[fecha][nombreNuevo] = true;
-        }
-        
-        let listaTecnicos = [];
-        try {
-            let d = safeStorage.getItem('config_lista_tecnicos');
-            if (d) listaTecnicos = JSON.parse(d);
-        } catch(e){}
-        
-        let idx = listaTecnicos.indexOf(nombreViejo);
-        if (idx !== -1) {
-            listaTecnicos[idx] = nombreNuevo;
-            safeStorage.setItem('config_lista_tecnicos', JSON.stringify(listaTecnicos));
-            poblarSelects();
-        }
-        
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            const btn = document.getElementById('btnSincronizar');
-            if(btn) btn.innerHTML = "⏳ Actualizando...";
-            google.script.run
-              .withSuccessHandler(function() { sincronizarDatos(); })
-              .withFailureHandler(function(err) { alert("Error al renombrar: " + err); sincronizarDatos(); })
-              .renombrarCuadrillaBD(nombreViejo, nombreNuevo);
-        } else {
-            renderizarAgenda();
-        }
-    }
-
-    function eliminarCuadrilla(fecha, cuadrilla) {
-        if (!confirm('¿Estás seguro de ocultar la columna de "' + cuadrilla + '" de la vista de hoy?\n\nNota: Los registros internos no se borrarán de Google Sheets, solo desaparecerá la columna de la agenda visual de forma temporal.')) return;
-        window.cuadrillasOcultas = window.cuadrillasOcultas || {};
-        if (!window.cuadrillasOcultas[fecha]) window.cuadrillasOcultas[fecha] = {};
-        window.cuadrillasOcultas[fecha][cuadrilla] = true;
-        
-        if (espaciosPorFecha[fecha] && espaciosPorFecha[fecha][cuadrilla]) {
-            delete espaciosPorFecha[fecha][cuadrilla];
-            if (window.cuadrillasManuales && window.cuadrillasManuales[fecha]) {
-                delete window.cuadrillasManuales[fecha][cuadrilla];
-            }
-            safeStorage.setItem('espacios_por_fecha_v4', JSON.stringify(espaciosPorFecha));
-        }
-        renderizarAgenda();
-    }
-
-    function asegurarOpcionSelect(idSelect, valor) {
-        if (!valor) return valor;
-        let select = document.getElementById(idSelect);
-        if (!select) return valor;
-        let existe = false;
-        let valorExacto = valor;
-        
-        for (let i = 0; i < select.options.length; i++) {
-            if (select.options[i].value.toString().trim().toLowerCase() === valor.toString().trim().toLowerCase()) {
-                existe = true;
-                valorExacto = select.options[i].value;
-                break;
-            }
-        }
-        
-        if (!existe) {
-            let opt = document.createElement('option');
-            opt.value = valor;
-            opt.innerText = valor;
-            select.appendChild(opt);
-        }
-        
-        return valorExacto;
-    }
-
-    function abrirModalNuevo(cuadrilla, espacio) {
-      document.getElementById('formularioAgenda').reset();
-      
-      const contenedorBadge = document.getElementById('contenedor_estado_wisphub');
-      if(contenedorBadge) contenedorBadge.classList.add('hidden');
-      
-      document.getElementById('form_rownum').value = '';
-      document.getElementById('form_fecha').value = document.getElementById('filtroFecha').value;
-      document.getElementById('form_cuadrilla').value = cuadrilla;
-      document.getElementById('form_espacio').value = espacio;
-      
-      asegurarOpcionSelect('form_tecnico', cuadrilla);
-      document.getElementById('form_tecnico').value = cuadrilla;
-      document.getElementById('modalTitulo').innerText = "Nuevo Registro - " + cuadrilla;
-      document.getElementById('btnEliminarRegistro').classList.add('hidden');
-      
-      desbloquearCamposFormulario();
-      document.getElementById('modalRegistro').classList.remove('hidden');
-    }
-
-    function abrirModalEdicion(rowNum) {
-      const cita = baseDatosGoogle.find(function(c) { return c.rowNum == rowNum; });
-      if(!cita) return;
-      
-      document.getElementById('formularioAgenda').reset();
-      
-      const contenedorBadge = document.getElementById('contenedor_estado_wisphub');
-      if(contenedorBadge) contenedorBadge.classList.add('hidden');
-      
-      document.getElementById('form_rownum').value = cita.rowNum;
-      document.getElementById('form_fecha').value = cita.fecha;
-      document.getElementById('form_cuadrilla').value = cita.tecnico;
-      document.getElementById('form_espacio').value = cita.espacio;
-      
-      const campos = ['tecnico', 'motivo', 'horario', 'nombredelcliente', 'linkCliente', 'telefono', 'ip', 'calleynumero', 'coloniaofracc', 'coordenadasoentrecalles', 'agente', 'plan', 'confirmada', 'serealizo', 'yafuecliente', 'bienvenida', 'pormediosediocuentadenosotros', 'otroscual', 'monto', 'comentarios', 'comentarioscat', 'comentariosdeltecnico', 'reportetecnico'];
-      
-      campos.forEach(function(c) {
-         let elId = c === 'linkCliente' ? 'form_link_cliente' : 'form_' + c;
-         let el = document.getElementById(elId);
-         if(el) {
-             if (el.tagName === 'SELECT' && cita[c]) {
-                 asegurarOpcionSelect(elId, cita[c]);
-             }
-             el.value = cita[c] || "";
-         }
-      });
-      
-      document.getElementById('modalTitulo').innerText = "Editar Registro - " + cita.nombredelcliente;
-      
-      if(rolUsuario === 'admin') {
-          document.getElementById('btnEliminarRegistro').classList.remove('hidden');
-          desbloquearCamposFormulario();
-      } else {
-          document.getElementById('btnEliminarRegistro').classList.add('hidden');
-          bloquearCamposParaTecnico();
-      }
-      document.getElementById('modalRegistro').classList.remove('hidden');
-    }
-
-    function enviarDatos(ev) {
-      ev.preventDefault();
-      
-      const ipIngresada = document.getElementById('form_ip').value.trim();
-      if (ipIngresada !== "") {
-        const ipRegEx = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-        if (!ipRegEx.test(ipIngresada)) {
-          alert("⚠️ El formato de la IP es incorrecto (Ej. 192.168.1.1). Por favor, corrígelo o deja el campo vacío.");
-          return;
-        }
-      }
-
-      if (!confirm("¿Estás seguro de que deseas guardar este registro?")) {
-        return;
-      }
-
-      const rowNum = document.getElementById('form_rownum').value;
-      const fecha = document.getElementById('form_fecha').value;
-      
-      let inputTecnico = document.getElementById('form_tecnico').value;
-      let cuadrillaOriginal = document.getElementById('form_cuadrilla').value;
-      
-      if (!inputTecnico || inputTecnico.trim() === "") {
-          inputTecnico = cuadrillaOriginal;
-      }
-      const tecnico = normalizarTecnico(inputTecnico);
-      
-      let espacioFinal = document.getElementById('form_espacio').value;
-      if (tecnico !== normalizarTecnico(cuadrillaOriginal)) {
-          let esp = 1;
-          while (baseDatosGoogle.some(function(c) { return c.fecha === fecha && normalizarTecnico(c.tecnico) === tecnico && c.espacio == esp && c.rowNum != rowNum; })) {
-              esp++;
-          }
-          espacioFinal = esp;
-      }
-
-      const horario = document.getElementById('form_horario').value;
-      if (horario && horario.trim().toLowerCase() !== "disponibilidad") {
-        const horarioDuplicado = baseDatosGoogle.some(function(c) {
-          return c.fecha === fecha && c.tecnico === tecnico && c.horario && c.horario.trim().toLowerCase() === horario.trim().toLowerCase() && c.rowNum != rowNum;
-        });
-        if (horarioDuplicado) {
-          alert("⚠️ Advertencia: El horario '" + horario + "' ya está asignado a la cuadrilla '" + tecnico + "' en esta fecha. Por favor, asigne otro horario diferente.");
-          return;
-        }
-      }
-      
-      const formElements = document.getElementById('formularioAgenda').elements;
-      for(let i=0; i<formElements.length; i++) formElements[i].disabled = false;
-
-      const btn = document.getElementById('btnGuardarRegistro');
-      btn.innerHTML = "Guardando...";
-      btn.disabled = true;
-      
-      const datos = {
-         rowNum: rowNum,
-         fecha: fecha,
-         tecnico: tecnico,
-         espacio: espacioFinal,
-         motivo: document.getElementById('form_motivo').value,
-         horario: horario,
-         nombredelcliente: document.getElementById('form_nombredelcliente').value,
-         linkCliente: document.getElementById('form_link_cliente').value,
-         telefono: document.getElementById('form_telefono').value,
-         ip: document.getElementById('form_ip').value,
-         calleynumero: document.getElementById('form_calleynumero').value,
-         coloniaofracc: document.getElementById('form_coloniaofracc').value,
-         coordenadasoentrecalles: document.getElementById('form_coordenadasoentrecalles').value,
-         agente: document.getElementById('form_agente').value,
-         plan: document.getElementById('form_plan').value,
-         confirmada: document.getElementById('form_confirmada').value,
-         serealizo: document.getElementById('form_serealizo').value,
-         yafuecliente: document.getElementById('form_yafuecliente').value,
-         bienvenida: document.getElementById('form_bienvenida').value,
-         pormediosediocuentadenosotros: document.getElementById('form_pormediosediocuentadenosotros').value,
-         otroscual: document.getElementById('form_otroscual').value,
-         monto: document.getElementById('form_monto').value,
-         comentarios: document.getElementById('form_comentarios').value,
-         comentarioscat: document.getElementById('form_comentarioscat').value,
-         comentariosdeltecnico: document.getElementById('form_comentariosdeltecnico').value,
-         reportetecnico: document.getElementById('form_reportetecnico').value,
-         usuario_movimiento: safeSession.getItem('nombre_usuario') || safeSession.getItem('sesion_activa')
-      };
-      
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run
-            .withSuccessHandler(function(res) {
-               if(res.status === 'success') {
-                  cerrarModal();
-                  sincronizarDatos();
-               } else alert("Error: " + res.message);
-               btn.innerHTML = "Guardar Cambios";
-               btn.disabled = false;
-            })
-            .withFailureHandler(function(err) {
-               alert("Error de conexión: " + err);
-               btn.innerHTML = "Guardar Cambios";
-               btn.disabled = false;
-            })
-            .guardarRegistroAgenda(datos);
-      }
-    }
-
-    function eliminarRegistroBD() {
-       if(!confirm("¿Estás seguro de eliminar este registro?")) return;
-       const rowNum = document.getElementById('form_rownum').value;
-       if(!rowNum) return;
-       
-       const usuario = safeSession.getItem('nombre_usuario') || safeSession.getItem('sesion_activa');
-       
-       google.script.run
-         .withSuccessHandler(function(res) {
-            if(res.status === 'success') {
-               cerrarModal();
-               sincronizarDatos();
-            } else alert("Error: " + res.message);
-         })
-         .eliminarRegistroAgenda(rowNum, usuario);
-    }
-
-    function cerrarModal() {
-      document.getElementById('modalRegistro').classList.add('hidden');
-    }
-
-    function abrirRutaMapa(cuadrilla, fecha) {
-      let citas = baseDatosGoogle.filter(function(c) {
-          return c.tecnico === cuadrilla && c.fecha === fecha && c.coordenadasoentrecalles && c.coordenadasoentrecalles.trim() !== "";
-      });
-      if (citas.length === 0) {
-          alert("No hay coordenadas o ubicaciones registradas para mapear la ruta de esta cuadrilla en el día seleccionado.");
-          return;
-      }
-      
-      citas.sort(function(a, b) { return parseInt(a.espacio) - parseInt(b.espacio); });
-      let puntos = citas.map(function(c) { return encodeURIComponent(c.coordenadasoentrecalles.trim()); });
-      let urlMapsDir = "https://www.google.com/maps/dir/" + puntos.join("/");
-      window.open(urlMapsDir, '_blank');
-    }
-
-    function poblarSelects() {
-       const selects = {
-          'form_tecnico': 'config_lista_tecnicos',
-          'form_motivo': 'config_lista_motivos',
-          'form_horario': 'config_lista_horarios',
-          'form_agente': 'config_lista_agentes',
-          'form_coloniaofracc': 'config_lista_colonias',
-          'form_plan': 'config_lista_planes',
-          'form_confirmada': 'config_lista_confirmada',
-          'form_serealizo': 'config_lista_serealizo',
-          'form_yafuecliente': 'config_lista_yafuecliente',
-          'form_bienvenida': 'config_lista_bienvenida',
-          'form_pormediosediocuentadenosotros': 'config_lista_medios'
-       };
-       
-       for (let [id, confKey] of Object.entries(selects)) {
-           let el = document.getElementById(id);
-           if(!el) continue;
-           
-           let valorAnterior = el.value;
-           el.innerHTML = '<option value="">Seleccione...</option>';
-           
-           let lista = [];
-           try {
-              let stored = safeStorage.getItem(confKey);
-              if (stored) lista = JSON.parse(stored);
-           } catch(e) {}
-           
-           lista.forEach(function(item) {
-               let opt = document.createElement('option');
-               opt.value = item;
-               opt.innerText = item;
-               el.appendChild(opt);
-           });
-           
-           if(valorAnterior) {
-               el.value = valorAnterior;
-           }
-       }
-    }
-
-    function dragStart(ev, rowNum) { 
-        if(rolUsuario === 'admin') ev.dataTransfer.setData("text/plain", rowNum);
-    }
-    
-    function dragOver(ev) { 
-        if(rolUsuario === 'admin') { 
-            ev.preventDefault();
-            ev.currentTarget.classList.add('drag-over');
-        } 
-    }
-    
-    function dragLeave(ev) { 
-        if(rolUsuario === 'admin') ev.currentTarget.classList.remove('drag-over');
-    }
-    
-    function drop(ev, nuevaCuadrilla, nuevoEspacio) {
-      if(rolUsuario !== 'admin') return;
-      
-      ev.preventDefault(); 
-      ev.currentTarget.classList.remove('drag-over');
-      
-      const rowNum = ev.dataTransfer.getData("text/plain");
-      if (!rowNum) return;
-      
-      const citaIndex = baseDatosGoogle.findIndex(function(c) { return c.rowNum == rowNum; });
-      if (citaIndex === -1) return;
-      
-      let cita = baseDatosGoogle[citaIndex];
-
-      const espacioOcupado = baseDatosGoogle.some(function(c) {
-          return c.fecha === cita.fecha &&
-                 c.tecnico === nuevaCuadrilla &&
-                 c.espacio == nuevoEspacio &&
-                 c.rowNum != cita.rowNum;
-      });
-      
-      if (espacioOcupado) {
-          alert("⚠️ Acción denegada: Este espacio ya está ocupado por otro cliente. Por favor, arrastra a un recuadro disponible (+).");
-          return;
-      }
-
-      if (cita.horario && cita.horario.trim().toLowerCase() !== "disponibilidad") {
-         const horarioDuplicado = baseDatosGoogle.some(function(c) {
-            return c.fecha === cita.fecha && c.tecnico === nuevaCuadrilla && c.horario && c.horario.trim().toLowerCase() === cita.horario.trim().toLowerCase() && c.rowNum != cita.rowNum;
-         });
-         
-         if (horarioDuplicado) {
-            alert("⚠️ Advertencia: El horario '" + cita.horario + "' ya está asignado a la cuadrilla '" + nuevaCuadrilla + "'. Movimiento cancelado.");
-            return;
-         }
-      }
-      
-      cita.tecnico = nuevaCuadrilla;
-      cita.espacio = nuevoEspacio;
-      cita.usuario_movimiento = safeSession.getItem('nombre_usuario') || safeSession.getItem('sesion_activa');
-      
-      renderizarAgenda();
-      
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run
-            .withFailureHandler(function(err) {
-               alert("Error al mover la cita: " + err);
-               sincronizarDatos();
-            })
-            .guardarRegistroAgenda(cita);
-      }
-    }
-
-    function bloquearCamposParaTecnico() {
-      const formElements = document.getElementById('formularioAgenda').elements;
-      for(let i=0; i<formElements.length; i++) {
-          let el = formElements[i];
-          if (el.type === 'button' || el.type === 'submit' || el.type === 'hidden') continue;
-          
-          if (camposPermitidosTecnico.indexOf(el.id) === -1) {
-              el.readOnly = true;
-              if(el.tagName === 'SELECT') el.disabled = true;
-              el.classList.add('campo-bloqueado');
-          } else {
-              el.readOnly = false;
-              el.disabled = false;
-              el.classList.remove('campo-bloqueado');
-          }
-      }
-    }
-
-    function desbloquearCamposFormulario() {
-      const formElements = document.getElementById('formularioAgenda').elements;
-      for(let i=0; i<formElements.length; i++) {
-          let el = formElements[i];
-          el.readOnly = false;
-          el.disabled = false;
-          el.classList.remove('campo-bloqueado');
-      }
-    }
-
-    function cambioDeFechaFiltro() { 
-        renderizarAgenda();
-    }
-    
-    function modificarEspacios(fecha, cuadrilla, operacion) {
-      if (!espaciosPorFecha[fecha]) espaciosPorFecha[fecha] = {};
-      if (!espaciosPorFecha[fecha][cuadrilla]) espaciosPorFecha[fecha][cuadrilla] = 4;
-      
-      if (operacion === 'sumar') espaciosPorFecha[fecha][cuadrilla]++;
-      else if (operacion === 'restar' && espaciosPorFecha[fecha][cuadrilla] > 1) espaciosPorFecha[fecha][cuadrilla]--;
-      
-      safeStorage.setItem('espacios_por_fecha_v4', JSON.stringify(espaciosPorFecha));
-      renderizarAgenda();
-    }
-
-    function agregarCuadrillaFecha() {
-      const input = document.getElementById('inputNuevaCuadrilla');
-      const nueva = normalizarTecnico(input.value);
-      if(!nueva) return;
-      
-      const fechaActual = document.getElementById('filtroFecha').value;
-      if (!espaciosPorFecha[fechaActual]) espaciosPorFecha[fechaActual] = {};
-      
-      if (!espaciosPorFecha[fechaActual][nueva]) {
-          espaciosPorFecha[fechaActual][nueva] = 4;
-      }
-      
-      window.cuadrillasManuales = window.cuadrillasManuales || {};
-      if (!window.cuadrillasManuales[fechaActual]) window.cuadrillasManuales[fechaActual] = {};
-      window.cuadrillasManuales[fechaActual][nueva] = true;
-      
-      if (window.cuadrillasOcultas && window.cuadrillasOcultas[fechaActual]) {
-          delete window.cuadrillasOcultas[fechaActual][nueva];
-      }
-      
-      safeStorage.setItem('espacios_por_fecha_v4', JSON.stringify(espaciosPorFecha));
-      renderizarAgenda();
-      
-      input.value = '';
-    }
-
-    function gestionarLista(configKey, titulo) {
-       let lista = [];
-       try { 
-         let d = safeStorage.getItem(configKey);
-         if(d) lista = JSON.parse(d);
-       } catch(e){}
-       
-       let nuevaLista = prompt("Editar " + titulo + " (separa las opciones por comas):", lista.join(", "));
-       
-       if(nuevaLista !== null) {
-          let arr = nuevaLista.split(',').map(function(s) { 
-              let val = s.trim();
-              if (configKey === 'config_lista_tecnicos') val = normalizarTecnico(val);
-              return val;
-          }).filter(function(s) { return s; });
-          
-          safeStorage.setItem(configKey, JSON.stringify(arr));
-          poblarSelects();
-       }
-    }
-
-    let baseDatosCompletaAdmin = { headers: [], rows: [] };
-    
-    function abrirVistaGeneralAdmin() {
-      if (rolUsuario !== 'admin') return;
-      document.getElementById('vistaAdminFiltros').classList.remove('hidden');
-      sincronizarVistaAdmin();
-    }
-    
-    function sincronizarVistaAdmin() {
-      const btn = document.getElementById('btnSincronizarAdminFiltros');
-      if (btn) btn.innerHTML = "⏳ Sincronizando...";
-      
-      document.getElementById('cargandoTablaAdmin').classList.remove('hidden');
-      document.getElementById('tablaAdminCompleta').classList.add('hidden');
-      
-      google.script.run.withSuccessHandler(function(response) {
-        if (btn) btn.innerHTML = "🔄 Sincronizar";
-        document.getElementById('cargandoTablaAdmin').classList.add('hidden');
-        document.getElementById('tablaAdminCompleta').classList.remove('hidden');
-        
-        if (response.status === 'success') {
-          baseDatosCompletaAdmin = response;
-          construirTablaFiltrosAdmin();
-        } else {
-          alert('Fallo de conexión en lectura completa: ' + response.message);
-        }
-      }).obtenerTodoContenidoBaseDatos();
-    }
-
-    function cerrarVistaGeneralAdmin() {
-      document.getElementById('vistaAdminFiltros').classList.add('hidden');
-    }
-
-    function construirTablaFiltrosAdmin() {
-      const thead = document.getElementById('tablaAdminHeader');
-      const tbody = document.getElementById('tablaAdminBody');
-      thead.innerHTML = '';
-      tbody.innerHTML = '';
-
-      if (!baseDatosCompletaAdmin.headers || baseDatosCompletaAdmin.headers.length === 0) return;
-
-      const filaTitulos = document.createElement('tr');
-      const filaFiltros = document.createElement('tr');
-      filaFiltros.className = "bg-slate-50 border-b border-slate-300";
-
-      baseDatosCompletaAdmin.headers.forEach((header, index) => {
-        const th = document.createElement('th');
-        th.className = "px-3 py-2.5 font-bold text-slate-700 whitespace-nowrap uppercase tracking-wider border-b border-slate-200 text-[11px]";
-        th.textContent = header;
-        filaTitulos.appendChild(th);
-
-        const thFiltro = document.createElement('th');
-        thFiltro.className = "px-2 py-1.5 border-b border-slate-300";
-
-        if (header.toLowerCase().includes('fecha')) {
-          const divRange = document.createElement('div');
-          divRange.className = "flex flex-col gap-1 min-w-[110px]";
-          
-          const inputInicio = document.createElement('input');
-          inputInicio.type = "date";
-          inputInicio.id = `filtro_admin_col_${index}_inicio`;
-          inputInicio.title = "Fecha Inicial";
-          inputInicio.className = "w-full border border-slate-300 rounded px-1 py-0.5 text-[10px] focus:outline-none focus:border-indigo-500";
-          inputInicio.addEventListener('input', ejecutarFiltrosAdmin);
-          
-          const inputFin = document.createElement('input');
-          inputFin.type = "date";
-          inputFin.id = `filtro_admin_col_${index}_fin`;
-          inputFin.title = "Fecha Final";
-          inputFin.className = "w-full border border-slate-300 rounded px-1 py-0.5 text-[10px] focus:outline-none focus:border-indigo-500";
-          inputFin.addEventListener('input', ejecutarFiltrosAdmin);
-
-          divRange.appendChild(inputInicio);
-          divRange.appendChild(inputFin);
-          thFiltro.appendChild(divRange);
-        } else {
-          const inputTexto = document.createElement('input');
-          inputTexto.type = "text";
-          inputTexto.id = `filtro_admin_col_${index}`;
-          inputTexto.placeholder = `Buscar...`;
-          inputTexto.className = "w-full border border-slate-300 rounded px-2 py-1 text-[11px] font-normal focus:outline-none focus:border-indigo-500";
-          inputTexto.addEventListener('input', ejecutarFiltrosAdmin);
-          thFiltro.appendChild(inputTexto);
-        }
-        filaFiltros.appendChild(thFiltro);
-      });
-
-      thead.appendChild(filaTitulos);
-      thead.appendChild(filaFiltros);
-      
-      baseDatosCompletaAdmin.rows.forEach((row, rowIndex) => {
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50 transition-colors";
-        tr.id = `fila_admin_raw_${rowIndex}`;
-
-        row.forEach((cellValue) => {
-          const td = document.createElement('td');
-          td.className = "px-3 py-2 whitespace-nowrap text-slate-600 max-w-[200px] truncate text-[11px]";
-          td.textContent = cellValue || "";
-          td.title = cellValue || ""; 
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-      });
-      
-      document.getElementById('totalFilasMostradas').textContent = `Registros totales: ${baseDatosCompletaAdmin.rows.length}`;
-    }
-
-    function ejecutarFiltrosAdmin() {
-      const rowsData = baseDatosCompletaAdmin.rows;
-      let contadorVisibles = 0;
-
-      const filtrosActivos = [];
-      for (let index = 0; index < baseDatosCompletaAdmin.headers.length; index++) {
-        const headerName = baseDatosCompletaAdmin.headers[index].toLowerCase();
-        if (headerName.includes('fecha')) {
-          filtrosActivos[index] = {
-            tipo: 'fecha',
-            inicio: document.getElementById(`filtro_admin_col_${index}_inicio`)?.value || "",
-            fin: document.getElementById(`filtro_admin_col_${index}_fin`)?.value || ""
-          };
-        } else {
-          const inputVal = document.getElementById(`filtro_admin_col_${index}`)?.value.toLowerCase().trim() || "";
-          let regex = null;
-          if (inputVal) {
-             const queryEscapado = inputVal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-             regex = new RegExp("(^|[\\s\\W_])" + queryEscapado + "([\\s\\W_]|$)", "i");
-          }
-          filtrosActivos[index] = {
-            tipo: 'texto',
-            query: inputVal,
-            regex: regex
-          };
-        }
-      }
-
-      rowsData.forEach((row, rowIndex) => {
-        let cumpleFiltros = true;
-
-        for (let index = 0; index < row.length; index++) {
-          const filtro = filtrosActivos[index];
-          const cellValue = (row[index] || "").toString().toLowerCase().trim();
-
-          if (filtro.tipo === 'fecha') {
-            const cellDateStr = (row[index] || "").trim();
-            if (cellDateStr) {
-              if (filtro.inicio && cellDateStr < filtro.inicio) { cumpleFiltros = false; break; }
-              if (filtro.fin && cellDateStr > filtro.fin) { cumpleFiltros = false; break; }
-            } else if (filtro.inicio || filtro.fin) {
-              cumpleFiltros = false;
-              break;
-            }
-          } else {
-            if (filtro.query) {
-              const esIgualDirecto = (cellValue === filtro.query);
-              if (!esIgualDirecto && filtro.regex && !filtro.regex.test(cellValue)) {
-                cumpleFiltros = false;
-                break;
-              }
-            }
-          }
-        }
-
-        const elemFila = document.getElementById(`fila_admin_raw_${rowIndex}`);
-        if (elemFila) {
-          if (cumpleFiltros) {
-            elemFila.classList.remove('hidden');
-            contadorVisibles++;
-          } else {
-            elemFila.classList.add('hidden');
-          }
-        }
-      });
-      document.getElementById('totalFilasMostradas').textContent = `Registros filtrados: ${contadorVisibles} de ${rowsData.length}`;
-    }
-  </script>
-<div id="modalClientesSimilares" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[120]">
-  <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
-    <div class="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-      <h3 class="font-black text-lg text-slate-800">Seleccionar Cliente WispHub</h3>
-      <button type="button" onclick="document.getElementById('modalClientesSimilares').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold p-1 leading-none">×</button>
+  <div class="order-grid">
+    <div class="card">
+      <div class="section-title">Menú</div>
+      <div class="prod-cats">${chips}</div>
+      <div class="prod-grid">${tiles}</div>
     </div>
-    
-    <div class="p-4 border-b border-slate-200 bg-slate-50">
-      <label class="block text-xs font-bold text-slate-600 mb-1">Filtrar por IP:</label>
-      <input type="text" id="filtroIpSimilares" placeholder="Escribe la IP para filtrar..." onkeyup="filtrarSimilaresIp()" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    <div class="card">
+      <div class="section-title">Datos del pedido</div>
+      <div class="field">
+        <label>Cliente / Mesa</label>
+        <input type="text" id="custName" placeholder="Nombre del cliente o número de mesa" value="${state.customer}" oninput="state.customer=this.value">
+      </div>
+      <div id="cartWrap"></div>
+      <div class="field" style="margin-top:10px;">
+        <label>Notas generales del pedido</label>
+        <textarea id="genNotes" rows="2" placeholder="Ej. para llevar, sin cebolla, etc." oninput="state.generalNotes=this.value">${state.generalNotes}</textarea>
+      </div>
+      <div class="field">
+        <label>Tomado por</label>
+        <input type="text" value="${getSession().name} (${ROLE_LABEL[getSession().role]})" disabled style="background:var(--bg-alt); color:var(--ink-soft);">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="submitOrder()">Enviar a cocina y caja →</button>
     </div>
+  </div>`;
+}
+function setProdFilter(c){ state.prodFilter=c; renderView(); }
+async function addToCart(pid){
+  const db = await loadDB();
+  const p = db.products.find(x=>x.id===pid);
+  if(!p) return;
+  const existing = state.cart.find(i=>i.productId===pid);
+  if(existing) existing.qty++;
+  else state.cart.push({productId:pid, name:p.name, price:p.price, qty:1, notes:''});
+  renderCart();
+}
+function changeQty(pid, delta){
+  const item = state.cart.find(i=>i.productId===pid);
+  if(!item) return;
+  item.qty += delta;
+  if(item.qty<=0) state.cart = state.cart.filter(i=>i.productId!==pid);
+  renderCart();
+}
+function setItemNote(pid, val){ const item = state.cart.find(i=>i.productId===pid); if(item) item.notes = val; }
+function renderCart(){
+  const wrap = document.getElementById('cartWrap');
+  if(!wrap) return;
+  if(state.cart.length===0){
+    wrap.innerHTML = `<div class="empty-cart">Aún no has agregado productos.<br>Toca un producto del menú para comenzar.</div>`;
+    return;
+  }
+  const items = state.cart.map(i=>`
+    <div class="cart-item">
+      <div class="ci-main">
+        <span class="ci-name">${i.name}</span>
+        <input class="ci-note" placeholder="Nota opcional" value="${i.notes}" oninput="setItemNote(${i.productId}, this.value)">
+      </div>
+      <div class="qty-ctrl">
+        <button onclick="changeQty(${i.productId},-1)">−</button>
+        <span>${i.qty}</span>
+        <button onclick="changeQty(${i.productId},1)">+</button>
+      </div>
+      <div class="ci-price">${money(i.price*i.qty)}</div>
+    </div>`).join('');
+  const total = state.cart.reduce((a,i)=>a+i.price*i.qty,0);
+  wrap.innerHTML = items + `<div class="total-row"><span>Total</span><span>${money(total)}</span></div>`;
+}
+async function submitOrder(){
+  if(state.cart.length===0){ toast('Agrega al menos un producto'); return; }
+  const db = await loadDB();
+  const s = getSession();
+  const total = state.cart.reduce((a,i)=>a+i.price*i.qty,0);
+  const order = {
+    id: nextId(db,'order'),
+    folio: 'B-'+String(db.counters.order-1).padStart(4,'0'),
+    customer: state.customer.trim() || 'Cliente sin nombre',
+    items: state.cart.map(i=>({...i})),
+    generalNotes: state.generalNotes.trim(),
+    waiterId: s.id, waiterName: s.name,
+    status:'espera', paymentStatus:'pendiente',
+    payments:[], total,
+    createdAt: new Date().toISOString(),
+    paidAt:null, paidBy:null
+  };
+  db.orders.unshift(order);
+  await saveDB(db);
+  await logHistory('Pedido creado', `${order.folio} · ${order.customer} · ${money(total)}`);
+  state.cart=[]; state.customer=''; state.generalNotes='';
+  toast('Pedido '+order.folio+' enviado');
+  renderView();
+}
 
-    <div class="p-6 overflow-y-auto flex-1">
-      <div id="listaClientesSimilares" class="space-y-3">
+/* =========================================================================
+   VIEW: COCINA
+   ========================================================================= */
+const KITCHEN_STEPS = ['espera','proceso','listo','barra'];
+const KITCHEN_LABEL = {espera:'En espera', proceso:'En proceso', listo:'Listo', barra:'En barra'};
+async function viewCocina(){
+  const db = await loadDB();
+  let orders = [...db.orders];
+  if(state.cocinaFilter==='activos') orders = orders.filter(o=>o.status!=='barra');
+  orders.sort((a,b)=> new Date(a.createdAt)-new Date(b.createdAt));
+
+  const cards = orders.map(o=>{
+    const stepIdx = KITCHEN_STEPS.indexOf(o.status);
+    const rail = KITCHEN_STEPS.map((st,i)=>{
+      const dot = `<div class="dot ${i<=stepIdx?'done':''}"></div>`;
+      const seg = i<KITCHEN_STEPS.length-1 ? `<div class="seg ${i<stepIdx?'done':''}"></div>` : '';
+      return dot+seg;
+    }).join('');
+    const items = o.items.map(i=>`<li><span>${i.qty}x ${i.name}${i.notes?` <em class="muted">(${i.notes})</em>`:''}</span><b>${money(i.price*i.qty)}</b></li>`).join('');
+    const nextStep = KITCHEN_STEPS[stepIdx+1];
+    return `
+    <div class="ticket-card">
+      <div class="ticket-head">
+        <div class="flex-between">
+          <span class="folio">${o.folio}</span>
+          <span class="badge badge-${o.status}">${KITCHEN_LABEL[o.status]}</span>
         </div>
+        <div class="meta">Mesero: ${o.waiterName} · ${fmtDateTime(o.createdAt)}</div>
+        <div class="meta">Cliente: ${o.customer}</div>
+      </div>
+      <div class="status-rail">${rail}</div>
+      <div class="ticket-body">
+        <ul>${items}</ul>
+        ${o.generalNotes?`<div class="ticket-note">📝 ${o.generalNotes}</div>`:''}
+      </div>
+      <div class="ticket-foot">
+        ${o.status!=='espera'?`<button class="btn btn-sm btn-ghost" onclick="setOrderStatus(${o.id}, '${KITCHEN_STEPS[stepIdx-1]}')">← Regresar</button>`:''}
+        ${nextStep?`<button class="btn btn-sm btn-success btn-block" onclick="setOrderStatus(${o.id}, '${nextStep}')">Pasar a: ${KITCHEN_LABEL[nextStep]} →</button>`:`<span class="muted" style="font-size:12.5px;">✔ En barra</span>`}
+      </div>
+    </div>`;
+  }).join('') || `<div class="empty-state"><span class="ic">🍲</span>No hay pedidos por preparar.</div>`;
+
+  return `
+  <div class="view-head">
+    <div><h2>Cocina</h2><p>Pedidos enviados desde meseros.</p></div>
+    <div class="prod-cats">
+      <button class="chip ${state.cocinaFilter==='activos'?'active':''}" onclick="setCocinaFilter('activos')">Activos</button>
+      <button class="chip ${state.cocinaFilter==='todos'?'active':''}" onclick="setCocinaFilter('todos')">Todos</button>
     </div>
   </div>
-</div>
+  <div class="ticket-grid">${cards}</div>`;
+}
+function setCocinaFilter(f){ state.cocinaFilter=f; renderView(); }
+async function setOrderStatus(id, status){
+  const db = await loadDB();
+  const o = db.orders.find(x=>x.id===id);
+  if(!o) return;
+  o.status = status;
+  await saveDB(db);
+  await logHistory('Estatus cocina', `${o.folio} → ${KITCHEN_LABEL[status]}`);
+  renderView();
+}
+
+/* =========================================================================
+   VIEW: CAJA
+   ========================================================================= */
+async function viewCaja(){
+  const db = await loadDB();
+  let orders = [...db.orders];
+  if(state.cajaFilter==='pendientes') orders = orders.filter(o=>o.paymentStatus==='pendiente');
+  orders.sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
+
+  const rows = orders.map(o=>`
+    <div class="caja-row">
+      <div class="cinfo">
+        <div class="cname">${o.folio} · ${o.customer}</div>
+        <div class="csub">Mesero: ${o.waiterName} · <span class="badge badge-${o.status}">${KITCHEN_LABEL[o.status]}</span> · ${fmtDateTime(o.createdAt)}</div>
+      </div>
+      <div class="camount">${money(o.total)}</div>
+      <div style="display:flex; gap:6px;">
+        <span class="badge badge-${o.paymentStatus}">${o.paymentStatus==='pagado'?'Pagado':'Pendiente'}</span>
+        <button class="btn btn-sm" onclick="openTicket(${o.id})">Ticket</button>
+        ${o.paymentStatus==='pendiente'?`<button class="btn btn-sm btn-primary" onclick="openPayModal(${o.id})">Cobrar</button>`:''}
+      </div>
+    </div>`).join('') || `<div class="empty-state"><span class="ic">💳</span>No hay cuentas en esta vista.</div>`;
+
+  return `
+  <div class="view-head">
+    <div><h2>Caja</h2><p>Cobra pedidos y revisa tickets.</p></div>
+    <div class="prod-cats">
+      <button class="chip ${state.cajaFilter==='pendientes'?'active':''}" onclick="setCajaFilter('pendientes')">Pendientes</button>
+      <button class="chip ${state.cajaFilter==='todos'?'active':''}" onclick="setCajaFilter('todos')">Todos</button>
+    </div>
+  </div>
+  <div class="caja-grid">
+    <div>${rows}</div>
+    <div class="card">
+      <div class="section-title">Resumen del día</div>
+      ${cajaResumenHTML(db)}
+    </div>
+  </div>
+  <div id="modalHost"></div>`;
+}
+function setCajaFilter(f){ state.cajaFilter=f; renderView(); }
+function cajaResumenHTML(db){
+  const tk = todayKey();
+  const todays = db.orders.filter(o=>o.paymentStatus==='pagado' && todayKey(new Date(o.paidAt))===tk);
+  const total = todays.reduce((a,o)=>a+o.total,0);
+  const byMethod = {efectivo:0,tarjeta:0,transferencia:0};
+  todays.forEach(o=> o.payments.forEach(p=> byMethod[p.method]+= p.amount));
+  return `
+  <div class="stat-card" style="margin-bottom:10px;"><div class="slabel">Ventas cobradas hoy</div><div class="sval">${money(total)}</div></div>
+  <table>
+    <tr><td>Efectivo</td><td style="text-align:right" class="mono">${money(byMethod.efectivo)}</td></tr>
+    <tr><td>Tarjeta</td><td style="text-align:right" class="mono">${money(byMethod.tarjeta)}</td></tr>
+    <tr><td>Transferencia</td><td style="text-align:right" class="mono">${money(byMethod.transferencia)}</td></tr>
+  </table>`;
+}
+
+async function openPayModal(orderId){
+  const db = await loadDB();
+  const o = db.orders.find(x=>x.id===orderId);
+  if(!o) return;
+  state.payDraft = {orderId, splits:[{method:'efectivo', amount:o.total}]};
+  renderPayModal();
+}
+async function renderPayModal(){
+  const db = await loadDB();
+  const d = state.payDraft;
+  if(!d){ document.getElementById('modalHost').innerHTML=''; return; }
+  const o = db.orders.find(x=>x.id===d.orderId);
+  const paidSum = d.splits.reduce((a,s)=>a+ (Number(s.amount)||0),0);
+  const remaining = +(o.total - paidSum).toFixed(2);
+  const splitsHTML = d.splits.map((s,idx)=>`
+    <div class="split-row">
+      <select onchange="updateSplitMethod(${idx}, this.value)">
+        <option value="efectivo" ${s.method==='efectivo'?'selected':''}>Efectivo</option>
+        <option value="tarjeta" ${s.method==='tarjeta'?'selected':''}>Tarjeta</option>
+        <option value="transferencia" ${s.method==='transferencia'?'selected':''}>Transferencia</option>
+      </select>
+      <input type="number" min="0" step="0.5" value="${s.amount}" oninput="updateSplitAmount(${idx}, this.value)">
+      ${d.splits.length>1?`<button class="btn btn-sm btn-danger" onclick="removeSplit(${idx})">✕</button>`:''}
+    </div>`).join('');
+
+  document.getElementById('modalHost').innerHTML = `
+  <div class="modal-overlay" onclick="if(event.target===this) closePayModal()">
+    <div class="modal">
+      <button class="modal-close" onclick="closePayModal()">✕</button>
+      <h2>Cobrar ${o.folio}</h2>
+      <p class="muted" style="margin-bottom:14px;">${o.customer} · Total: <b>${money(o.total)}</b></p>
+      <div class="section-title">Formas de pago</div>
+      ${splitsHTML}
+      <button class="btn btn-sm" onclick="addSplit()">+ Dividir pago</button>
+      <div class="total-row" style="margin-top:16px;">
+        <span>${remaining===0?'Cuenta saldada':(remaining>0?'Falta por cobrar':'Cambio')}</span>
+        <span style="color:${remaining===0?'var(--cilantro)':'var(--brick)'}">${money(Math.abs(remaining))}</span>
+      </div>
+      <button class="btn btn-primary btn-block" style="margin-top:14px;" ${remaining!==0?'disabled':''} onclick="confirmPayment()">Confirmar cobro</button>
+    </div>
+  </div>`;
+}
+function addSplit(){ state.payDraft.splits.push({method:'tarjeta', amount:0}); renderPayModal(); }
+function removeSplit(i){ state.payDraft.splits.splice(i,1); renderPayModal(); }
+function updateSplitMethod(i,v){ state.payDraft.splits[i].method=v; renderPayModal(); }
+function updateSplitAmount(i,v){ state.payDraft.splits[i].amount = parseFloat(v)||0; renderPayModal(); }
+function closePayModal(){ state.payDraft=null; document.getElementById('modalHost').innerHTML=''; }
+
+async function confirmPayment(){
+  const db = await loadDB();
+  const d = state.payDraft;
+  const o = db.orders.find(x=>x.id===d.orderId);
+  o.paymentStatus='pagado';
+  o.payments = d.splits.map(s=>({method:s.method, amount:Number(s.amount)||0}));
+  o.paidAt = new Date().toISOString();
+  o.paidBy = getSession().name;
+  await saveDB(db);
+  await logHistory('Cobro realizado', `${o.folio} · ${money(o.total)}`);
+  toast('Pago registrado');
+  closePayModal();
+  renderView();
+  openTicket(o.id);
+}
+
+async function openTicket(orderId){
+  const db = await loadDB();
+  const o = db.orders.find(x=>x.id===orderId);
+  if(!o) return;
+  const items = o.items.map(i=>`<li><span>${i.qty}x ${i.name}</span><b>${money(i.price*i.qty)}</b></li>`).join('');
+  const pays = o.payments.length? `<div style="margin-top:6px;">${o.payments.map(p=>`<div style="display:flex;justify-content:space-between;"><span>${p.method}</span><b>${money(p.amount)}</b></div>`).join('')}</div>` : '';
+  document.getElementById('modalHost').insertAdjacentHTML('beforeend', `
+  <div class="modal-overlay" onclick="if(event.target===this) closeTicket()">
+    <div class="modal" style="max-width:340px; font-family:'IBM Plex Mono',monospace;">
+      <button class="modal-close" onclick="closeTicket()" style="font-family:'Figtree',sans-serif;">✕</button>
+      <div style="text-align:center; margin-bottom:10px;">
+        <h2 style="font-family:'Fraunces',serif;">Birria Express</h2>
+        <div class="muted" style="font-size:12px;">${o.folio} · ${fmtDateTime(o.createdAt)}</div>
+      </div>
+      <div style="font-size:12.5px; border-top:1px dashed var(--line); border-bottom:1px dashed var(--line); padding:8px 0; margin-bottom:8px;">
+        Cliente: ${o.customer}<br>Atendió: ${o.waiterName}
+      </div>
+      <ul style="list-style:none; padding:0; margin:0; font-size:13px;">${items}</ul>
+      ${o.generalNotes?`<div class="muted" style="font-size:12px; margin-top:6px;">Notas: ${o.generalNotes}</div>`:''}
+      <div class="total-row"><span>Total</span><span>${money(o.total)}</span></div>
+      ${pays}
+      <div class="muted" style="text-align:center; font-size:11px; margin-top:10px;">¡Gracias por su compra!</div>
+      <button class="btn btn-primary btn-block" style="margin-top:14px; font-family:'Figtree',sans-serif;" onclick="printTicket(${o.id})">🖨️ Imprimir</button>
+    </div>
+  </div>`);
+}
+function closeTicket(){ const hosts = document.querySelectorAll('#modalHost .modal-overlay'); if(hosts.length) hosts[hosts.length-1].remove(); }
+
+async function printTicket(orderId){
+  const db = await loadDB();
+  const o = db.orders.find(x=>x.id===orderId);
+  const items = o.items.map(i=>`<div style="display:flex;justify-content:space-between;">${i.qty}x ${i.name}<b>${money(i.price*i.qty)}</b></div>`).join('');
+  const pays = o.payments.map(p=>`<div style="display:flex;justify-content:space-between;">${p.method}<b>${money(p.amount)}</b></div>`).join('');
+  const w = window.open('', '_blank', 'width=380,height=600');
+  w.document.write(`<html><head><title>Ticket ${o.folio}</title>
+  <style>body{font-family:monospace; padding:14px; font-size:13px;} h2{text-align:center;margin:0 0 4px;} .c{text-align:center;} hr{border:none;border-top:1px dashed #999;}</style>
+  </head><body>
+  <h2>Birria Express</h2>
+  <div class="c">${o.folio} · ${fmtDateTime(o.createdAt)}</div>
+  <hr>Cliente: ${o.customer}<br>Atendió: ${o.waiterName}<hr>
+  ${items}
+  ${o.generalNotes?'<hr>Notas: '+o.generalNotes:''}
+  <hr><div style="display:flex;justify-content:space-between;font-weight:bold;">TOTAL<span>${money(o.total)}</span></div>
+  <hr>${pays}
+  <div class="c" style="margin-top:10px;">¡Gracias por su compra!</div>
+  <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+/* =========================================================================
+   VIEW: PRODUCTOS
+   ========================================================================= */
+async function viewProductos(){
+  const db = await loadDB();
+  const rows = db.products.map(p=>`
+    <tr>
+      <td>${p.name}</td>
+      <td>${p.category}</td>
+      <td class="mono">${money(p.price)}</td>
+      <td style="text-align:right;">
+        <button class="btn btn-sm" onclick="openProductModal(${p.id})">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteProduct(${p.id})">Eliminar</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="4" class="empty-state">Sin productos.</td></tr>`;
+  return `
+  <div class="view-head">
+    <div><h2>Productos</h2><p>Menú del restaurante.</p></div>
+    <button class="btn btn-primary" onclick="openProductModal()">+ Nuevo producto</button>
+  </div>
+  <div class="card table-wrap">
+    <table><thead><tr><th>Nombre</th><th>Categoría</th><th>Precio</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+  </div>
+  <div id="modalHost"></div>`;
+}
+
+async function openProductModal(pid){
+  const db = await loadDB();
+  const p = pid ? db.products.find(x=>x.id===pid) : {name:'', price:'', category:''};
+  document.getElementById('modalHost').innerHTML = `
+  <div class="modal-overlay" onclick="if(event.target===this) closeModalHost()">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModalHost()">✕</button>
+      <h2>${pid?'Editar producto':'Nuevo producto'}</h2>
+      <div class="field"><label>Nombre</label><input id="pfName" value="${p.name}"></div>
+      <div class="field"><label>Categoría</label><input id="pfCat" value="${p.category}" placeholder="Ej. Birria, Bebidas"></div>
+      <div class="field"><label>Precio</label><input id="pfPrice" type="number" min="0" step="0.5" value="${p.price}"></div>
+      <button class="btn btn-primary btn-block" onclick="saveProduct(${pid||'null'})">Guardar</button>
+    </div>
+  </div>`;
+}
+
+async function saveProduct(pid){
+  const name = document.getElementById('pfName').value.trim();
+  const cat = document.getElementById('pfCat').value.trim() || 'Otros';
+  const price = parseFloat(document.getElementById('pfPrice').value)||0;
+  if(!name){ toast('Escribe un nombre'); return; }
+  const db = await loadDB();
+  if(pid){
+    const p = db.products.find(x=>x.id===pid);
+    Object.assign(p, {name, category:cat, price});
+    await logHistory('Producto editado', name);
+  }else{
+    const id = nextId(db,'product');
+    db.products.push({id, name, category:cat, price});
+    await logHistory('Producto creado', name);
+  }
+  await saveDB(db);
+  closeModalHost();
+  toast('Guardado');
+  renderView();
+}
+
+async function deleteProduct(pid){
+  const db = await loadDB();
+  const p = db.products.find(x=>x.id===pid);
+  if(!confirm('¿Eliminar "'+(p?p.name:'')+'"?')) return;
+  db.products = db.products.filter(x=>x.id!==pid);
+  await saveDB(db);
+  await logHistory('Producto eliminado', p?p.name:'');
+  toast('Eliminado');
+  renderView();
+}
+function closeModalHost(){ const h=document.getElementById('modalHost'); if(h) h.innerHTML=''; }
+
+/* =========================================================================
+   VIEW: CORTE
+   ========================================================================= */
+function computeSales(db, filterFn){
+  const paid = db.orders.filter(o=>o.paymentStatus==='pagado' && filterFn(new Date(o.paidAt)));
+  const total = paid.reduce((a,o)=>a+o.total,0);
+  const byMethod = {efectivo:0,tarjeta:0,transferencia:0};
+  paid.forEach(o=>o.payments.forEach(p=>byMethod[p.method]+=p.amount));
+  return {count:paid.length, total, byMethod};
+}
+
+async function viewCorte(){
+  const db = await loadDB();
+  const tk = todayKey();
+  const dayS = computeSales(db, d=>todayKey(d)===tk);
+  const weekS = computeSales(db, d=>isoWeekKey(d)===isoWeekKey());
+  const monthS = computeSales(db, d=>monthKey(d)===monthKey());
+  const cashOpen = db.cash.date===tk;
+  const finalCash = (cashOpen? (Number(db.cash.initial)||0) : 0) + dayS.byMethod.efectivo;
+
+  const closuresRows = [...db.closures].reverse().slice(0,10).map(c=>`
+    <tr><td>${c.date}</td><td class="mono">${money(c.initialCash)}</td><td class="mono">${money(c.finalCash)}</td><td class="mono">${money(c.totalSales)}</td><td>${c.closedBy}</td></tr>
+  `).join('') || `<tr><td colspan="5" class="empty-state">Sin cortes registrados.</td></tr>`;
+
+  return `
+  <div class="view-head">
+    <div><h2>Corte de caja</h2><p>Control de caja y ventas en la nube.</p></div>
+    <button class="btn" onclick="printReport()">📄 Reporte histórico</button>
+  </div>
+
+  <div class="card" style="margin-bottom:18px;">
+    <div class="section-title">Caja del día</div>
+    ${cashOpen? `
+      <p>Caja inicial: <b class="mono">${money(db.cash.initial)}</b> (abierta por ${db.cash.openedBy})</p>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="slabel">Caja inicial</div><div class="sval">${money(db.cash.initial)}</div></div>
+        <div class="stat-card"><div class="slabel">Ventas en efectivo</div><div class="sval">${money(dayS.byMethod.efectivo)}</div></div>
+        <div class="stat-card"><div class="slabel">Caja final estimada</div><div class="sval">${money(finalCash)}</div></div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:10px;" onclick="realizarCorte()">Realizar corte de caja</button>
+    ` : `
+      <p class="muted">La caja de hoy no se ha abierto.</p>
+      <div class="field" style="max-width:260px;"><label>Monto inicial</label><input id="initCash" type="number" min="0" step="0.5" value="0"></div>
+      <button class="btn btn-primary" onclick="abrirCaja()">Abrir caja</button>
+    `}
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card"><div class="slabel">Venta de hoy</div><div class="sval">${money(dayS.total)}</div></div>
+    <div class="stat-card"><div class="slabel">Venta de la semana</div><div class="sval">${money(weekS.total)}</div></div>
+    <div class="stat-card"><div class="slabel">Venta del mes</div><div class="sval">${money(monthS.total)}</div></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Historial de cortes</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Fecha</th><th>Caja inicial</th><th>Caja final</th><th>Total</th><th>Cerró</th></tr></thead>
+      <tbody>${closuresRows}</tbody>
+    </table></div>
+  </div>`;
+}
+
+async function abrirCaja(){
+  const val = parseFloat(document.getElementById('initCash').value)||0;
+  const db = await loadDB();
+  db.cash = {date:todayKey(), initial:val, openedBy:getSession().name};
+  await saveDB(db);
+  await logHistory('Apertura de caja', 'Inicial: '+money(val));
+  toast('Caja abierta');
+  renderView();
+}
+
+async function realizarCorte(){
+  const db = await loadDB();
+  const tk = todayKey();
+  const dayS = computeSales(db, d=>todayKey(d)===tk);
+  const finalCash = (Number(db.cash.initial)||0) + dayS.byMethod.efectivo;
+  if(!confirm('¿Realizar el corte del día?')) return;
+  db.closures.push({
+    id:uid(), date:tk, initialCash:db.cash.initial, finalCash,
+    totalSales:dayS.total, byMethod:dayS.byMethod, ordersCount:dayS.count,
+    closedBy:getSession().name, ts:new Date().toISOString()
+  });
+  db.cash = {date:null, initial:null, openedBy:null};
+  await saveDB(db);
+  await logHistory('Corte realizado', `Venta: ${money(dayS.total)}`);
+  toast('Corte realizado');
+  renderView();
+}
+
+async function printReport(){
+  const db = await loadDB();
+  const rows = [...db.closures].reverse().map(c=>`
+    <tr><td>${c.date}</td><td>${money(c.initialCash)}</td><td>${money(c.finalCash)}</td><td>${money(c.totalSales)}</td><td>${c.ordersCount}</td><td>${c.closedBy}</td></tr>`).join('') || '<tr><td colspan="6">Sin cortes</td></tr>';
+  const w = window.open('', '_blank');
+  w.document.write(`<html><head><title>Reporte</title><style>body{font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;} td,th{border:1px solid #ccc;padding:6px;}</style></head>
+  <body><h1>Birria Express — Histórico</h1><table><thead><tr><th>Fecha</th><th>Inicial</th><th>Final</th><th>Total</th><th>Pedidos</th><th>Cerró</th></tr></thead><tbody>${rows}</tbody></table>
+  <script>window.onload=()=>window.print();<\/script></body></html>`);
+  w.document.close();
+}
+
+/* =========================================================================
+   VIEW: USUARIOS
+   ========================================================================= */
+async function viewUsuarios(){
+  const db = await loadDB();
+  const rows = db.users.map(u=>`
+    <tr>
+      <td>${u.name}</td>
+      <td>${u.username}</td>
+      <td><span class="badge badge-${u.role}">${ROLE_LABEL[u.role]}</span></td>
+      <td style="text-align:right;">
+        <button class="btn btn-sm" onclick="openUserModal(${u.id})">Editar</button>
+        ${u.username==='Brian'?'':`<button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">Eliminar</button>`}
+      </td>
+    </tr>`).join('');
+  const hist = db.history.slice(0,80).map(h=>`
+    <div class="hist-item"><div class="ht">${fmtDateTime(h.ts)} · ${h.user}</div><div><b>${h.action}:</b> ${h.detail}</div></div>
+  `).join('') || `<div class="empty-state">Sin movimientos.</div>`;
+
+  return `
+  <div class="view-head">
+    <div><h2>Usuarios</h2><p>Control de accesos.</p></div>
+    <button class="btn btn-primary" onclick="openUserModal()">+ Nuevo usuario</button>
+  </div>
+  <div class="card table-wrap" style="margin-bottom:18px;">
+    <table><thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+  </div>
+  <div class="card">
+    <div class="section-title">Historial de movimientos</div>
+    <div class="hist-list">${hist}</div>
+  </div>
+  <div id="modalHost"></div>`;
+}
+
+async function openUserModal(uidNum){
+  const db = await loadDB();
+  const u = uidNum ? db.users.find(x=>x.id===uidNum) : {name:'', username:'', password:'', role:'mesero'};
+  document.getElementById('modalHost').innerHTML = `
+  <div class="modal-overlay" onclick="if(event.target===this) closeModalHost()">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModalHost()">✕</button>
+      <h2>${uidNum?'Editar usuario':'Nuevo usuario'}</h2>
+      <div class="field"><label>Nombre</label><input id="ufName" value="${u.name}"></div>
+      <div class="field"><label>Usuario</label><input id="ufUser" value="${u.username}"></div>
+      <div class="field"><label>Contraseña</label><input id="ufPass" type="text" value="${u.password}"></div>
+      <div class="field"><label>Rol</label>
+        <select id="ufRole">
+          ${Object.keys(ROLE_LABEL).map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${ROLE_LABEL[r]}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="saveUser(${uidNum||'null'})">Guardar</button>
+    </div>
+  </div>`;
+}
+
+async function saveUser(uidNum){
+  const name = document.getElementById('ufName').value.trim();
+  const username = document.getElementById('ufUser').value.trim();
+  const password = document.getElementById('ufPass').value;
+  const role = document.getElementById('ufRole').value;
+  if(!name || !username || !password){ toast('Completa los campos'); return; }
+  const db = await loadDB();
+  if(db.users.some(x=>x.username.toLowerCase()===username.toLowerCase() && x.id!==uidNum)){
+    toast('El usuario ya existe'); return;
+  }
+  if(uidNum){
+    const u = db.users.find(x=>x.id===uidNum);
+    Object.assign(u, {name, username, password, role});
+    await logHistory('Usuario editado', name);
+  }else{
+    const id = nextId(db,'user');
+    db.users.push({id, name, username, password, role});
+    await logHistory('Usuario creado', name);
+  }
+  await saveDB(db);
+  closeModalHost();
+  toast('Guardado');
+  renderView();
+}
+
+async function deleteUser(uidNum){
+  const db = await loadDB();
+  const u = db.users.find(x=>x.id===uidNum);
+  if(!confirm('¿Eliminar a '+(u?u.name:'')+'?')) return;
+  db.users = db.users.filter(x=>x.id!==uidNum);
+  await saveDB(db);
+  await logHistory('Usuario eliminado', u?u.name:'');
+  toast('Eliminado');
+  renderView();
+}
+
+/* =========================================================================
+   BOOT
+   ========================================================================= */
+async function boot(){
+  const s = getSession();
+  if(!s){ renderLogin(); return; }
+  
+  // Mostrar pantalla de carga inicial mientras descarga la DB de la nube
+  document.getElementById('root').innerHTML = `<div class="loading-overlay"><div style="font-size:36px;">🌶️</div>Conectando a Google Sheets...</div>`;
+  await loadDB();
+  renderShell();
+}
+
+boot();
+</script>
 </body>
 </html>
